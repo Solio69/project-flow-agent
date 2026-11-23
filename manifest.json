@@ -1,0 +1,9 @@
+{
+  "id": "project-flow-agent",
+  "name": "Project Flow Agent",
+  "version": "0.1.0",
+  "minAppVersion": "1.8.0",
+  "description": "Просмотр текущих действий в Obsidian.",
+  "author": "Project Flow Agent",
+  "isDesktopOnly": true
+}
