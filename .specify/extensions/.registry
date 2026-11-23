@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "grooming": {
+      "version": "0.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:9988166632fdc33edd0cc5cbf07943ee7365383cf56d27b9d43644e36b5b5fd6",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "agy": [
+          "speckit.grooming.prepare"
+        ],
+        "codex": [
+          "speckit.grooming.prepare"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-23T15:07:59.979072+00:00"
+    }
+  }
+}
