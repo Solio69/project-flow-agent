@@ -11,9 +11,9 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { test } from "node:test";
 import { build } from "esbuild";
-import { createCurrentActionsFixture } from "./fixtures/current-actions.mjs";
-import { obsoleteActions, propertyActions } from "./fixtures/current-actions-markdown.mjs";
-import { currentActionsExpected, projectLinkCase, watchFixture } from "./fixtures/scaffold-data.mjs";
+import { createCurrentTasksFixture } from "./fixtures/current-tasks.mjs";
+import { obsoleteTasks, propertyTasks } from "./fixtures/current-tasks-markdown.mjs";
+import { currentTasksExpected, projectLinkCase, sourceNotePaths, watchFixture } from "./fixtures/scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
 const project = fileURLToPath(new URL("../", import.meta.url));
@@ -26,7 +26,7 @@ const {
 const {
   viewTitle, viewHeading, legacyTask, legacyProject, todayGroup, missingNote, obsoleteGroup,
   taskId, projectAlias, projectLink, missingProject, missingSource, noteOpenFailed,
-} = currentActionsExpected;
+} = currentTasksExpected;
 const { note: projectLinkNote, middleButton, rightButton } = projectLinkCase;
 const config = join(project, buildScript);
 
@@ -46,7 +46,7 @@ async function waitForBuild(child, ready) {
 }
 
 test("кнопка открывает, повторно активирует и позволяет переоткрыть вкладку", async () => {
-  const fixture = await createCurrentActionsFixture();
+  const fixture = await createCurrentTasksFixture();
   const { controls, views, leaves, mounts, notices, ribbonClick } = fixture;
   assert.equal(views.size, 1, "плагин регистрирует тип вкладки");
   assert.equal(typeof ribbonClick, "function", "плагин регистрирует кнопку");
@@ -78,17 +78,30 @@ test("кнопка открывает, повторно активирует и 
   assert.equal(mounts.length, 3, "после ошибки можно открыть вкладку повторно");
 });
 
+test("список читает прежнюю заметку и переключается на новое имя при её появлении", async () => {
+  const fixture = await createCurrentTasksFixture();
+  const { controls, mounts, ribbonClick, emitModify, renamedSource } = fixture;
+  await ribbonClick();
+  assert.equal(mounts.at(-1).element.props.state.document.sourcePath, sourceNotePaths.legacy);
+
+  controls.renamedSourceAvailable = true;
+  await emitModify(renamedSource);
+  assert.equal(mounts.at(-1).element.props.state.document.sourcePath, sourceNotePaths.renamed);
+  assert.match(mounts.at(-1).markup, legacyTask);
+  await fixture.activeLeaf.view.onClose();
+});
+
 test("список применяет только актуальное чтение и освобождает подписки при закрытии", async () => {
-  const fixture = await createCurrentActionsFixture();
+  const fixture = await createCurrentTasksFixture();
   const { controls, mounts, listeners, ribbonClick, emitModify } = fixture;
   await ribbonClick();
 
   let finishOldRead;
   controls.nextRead = new Promise((resolve) => { finishOldRead = resolve; });
   await emitModify();
-  controls.markdown = propertyActions;
+  controls.markdown = propertyTasks;
   await emitModify();
-  finishOldRead(obsoleteActions);
+  finishOldRead(obsoleteTasks);
   await new Promise(setImmediate);
 
   const { markup, element } = mounts.at(-1);
@@ -109,9 +122,9 @@ test("список применяет только актуальное чтен
 });
 
 test("ссылки учитывают закрепление, модификатор и историю вкладки", async () => {
-  const fixture = await createCurrentActionsFixture();
+  const fixture = await createCurrentTasksFixture();
   const { controls, leaves, mounts, notices, listeners, openedNotes, note, projectNote, workspace, ribbonClick } = fixture;
-  controls.markdown = propertyActions;
+  controls.markdown = propertyTasks;
   await ribbonClick();
 
   const { element } = mounts.at(-1);
@@ -166,7 +179,7 @@ test("ссылки учитывают закрепление, модификат
 test("нажатие колёсиком по ссылке открывает новую вкладку", async () => {
   const { outputFiles: [bundle] } = await build({
     absWorkingDir: project,
-    entryPoints: ["src/current-actions/NoteLink/index.ts"],
+    entryPoints: ["src/current-tasks/NoteLink/index.ts"],
     bundle: true,
     format: "cjs",
     external: ["react/jsx-runtime"],

@@ -8,7 +8,7 @@
 ## US1. Вкладка Obsidian
 
 - [x] T003 [US1] Red. Добавить в `tests/scaffold.test.mjs` проверки регистрации кнопки и вкладки, повторного открытия и освобождения React. Зафиксировать исходное падение.
-- [x] T004 [US1] Green. Реализовать регистрацию в `src/main.ts`, `ItemView` и React-каркас в `src/current-actions/`.
+- [x] T004 [US1] Green. Реализовать регистрацию в `src/main.ts`, `ItemView` и React-каркас в `src/current-tasks/`.
 - [x] T005 [US1] Refactor. Сверить жизненный цикл вкладки и повторить проверки.
 
 ## US2. Сборка и локальный запуск

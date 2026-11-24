@@ -2,9 +2,14 @@ const taskId = "tsk_example";
 
 export const taskNoteMarkdown = `---\nid: ${taskId}\n---\n`;
 
-export const currentActionsExpected = {
-  viewTitle: "Текущие действия",
-  viewHeading: /<h2>Текущие действия<\/h2>/,
+export const sourceNotePaths = {
+  legacy: "Текущие действия.md",
+  renamed: "Текущие задачи.md",
+};
+
+export const currentTasksExpected = {
+  viewTitle: "Текущие задачи",
+  viewHeading: /<h2>Текущие задачи<\/h2>/,
   legacyTask: /Проверить Черновик/,
   legacyProject: /<h3><a [^>]+>Мастерская<\/a><\/h3>/,
   todayGroup: /Сегодня/,
@@ -46,5 +51,5 @@ export const watchFixture = {
   expectedThemeVariable: /--text-muted/,
   originalHeading: "<h2>{title}</h2>",
   probe: "pfa-watch-probe",
-  componentPath: ["src", "current-actions", "CurrentActions", "CurrentActions.tsx"],
+  componentPath: ["src", "current-tasks", "CurrentTasks", "CurrentTasks.tsx"],
 };

@@ -1,0 +1,10 @@
+.pfa-current-tasks {
+  padding: var(--size-4-3);
+  overflow-wrap: anywhere;
+}
+
+.pfa-current-tasks p,
+.pfa-current-tasks .pfa-task-project,
+.pfa-current-tasks .pfa-diagnostics {
+  color: var(--text-muted);
+}

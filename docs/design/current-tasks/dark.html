@@ -1,0 +1,1184 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Текущие задачи · тёмный макет</title>
+  <style>
+    body { max-width: 736px; margin: 8px auto; padding-inline: 8px; }
+  </style>
+</head>
+<body>
+<!-- Тёмная версия согласованного макета экрана «Текущие задачи». -->
+<section id="pfa-current-demo" data-theme="dark" lang="ru" aria-labelledby="pfa-heading">
+  <div>
+    <header class="pfa-page-header">
+      <h1 id="pfa-heading">Текущие задачи</h1>
+      <div class="pfa-toolbar">
+        <div class="pfa-period-control" data-period-control>
+          <div class="pfa-period-trigger">
+            <button type="button" class="pfa-button cursor-interaction" data-action="period"
+              aria-haspopup="dialog" aria-expanded="false" aria-controls="pfa-period-picker">
+              <span class="pfa-icon"><i data-lucide="calendar-days" aria-hidden="true"></i><span aria-hidden="true">▦</span></span>
+              <span data-period>23–29 ноября</span>
+            </button>
+            <button type="button" class="pfa-button pfa-period-clear pfa-close cursor-interaction" data-action="clear-period"
+              aria-label="Удалить даты периода" data-tooltip="Удалить даты периода" hidden>
+              <span class="pfa-icon" aria-hidden="true"><i data-lucide="x"></i><span>×</span></span>
+            </button>
+          </div>
+          <section class="pfa-period-picker" id="pfa-period-picker" role="dialog" aria-label="Выбрать даты периода" hidden>
+            <header class="pfa-calendar-head">
+              <button type="button" class="pfa-button pfa-circle cursor-interaction" data-action="shift-month" data-step="-1" aria-label="Предыдущий месяц">
+                <span class="pfa-icon" aria-hidden="true"><i data-lucide="chevron-left"></i><span>‹</span></span>
+              </button>
+              <h2 data-calendar-month aria-live="polite"></h2>
+              <button type="button" class="pfa-button pfa-circle cursor-interaction" data-action="shift-month" data-step="1" aria-label="Следующий месяц">
+                <span class="pfa-icon" aria-hidden="true"><i data-lucide="chevron-right"></i><span>›</span></span>
+              </button>
+            </header>
+            <div class="pfa-calendar-content">
+              <div class="pfa-calendar-week" aria-hidden="true">
+                <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+              </div>
+              <div class="pfa-calendar-days" data-calendar-days role="group" aria-label="Дни календаря"></div>
+            </div>
+            <footer class="pfa-calendar-footer">
+              <p data-calendar-selection aria-live="polite"></p>
+              <button type="button" class="pfa-button pfa-primary cursor-interaction" data-action="apply-period">Применить</button>
+            </footer>
+          </section>
+        </div>
+        <button type="button" class="pfa-button pfa-history cursor-interaction" data-action="history">
+          <span class="pfa-icon"><i data-lucide="archive" aria-hidden="true"></i><span aria-hidden="true">▤</span></span>
+          Перенести выполненные в историю
+        </button>
+      </div>
+    </header>
+    <div data-lists></div>
+    <div class="pfa-status" data-status role="status" aria-live="polite"></div>
+  </div>
+  <dialog class="pfa-dialog" aria-labelledby="pfa-dialog-title">
+    <form novalidate>
+      <header class="pfa-dialog-head">
+        <span class="pfa-dialog-symbol" data-dialog-symbol aria-hidden="true"></span>
+        <h2 id="pfa-dialog-title"></h2>
+        <button type="button" class="pfa-button pfa-circle pfa-close cursor-interaction" data-action="close" aria-label="Закрыть">
+          <span class="pfa-icon" aria-hidden="true"><i data-lucide="x"></i><span>×</span></span>
+        </button>
+      </header>
+      <div class="pfa-dialog-body">
+        <div class="pfa-fields" data-dialog-content></div>
+        <p class="pfa-error" data-error role="alert" hidden></p>
+      </div>
+      <footer>
+        <button type="button" class="pfa-button cursor-interaction" data-action="close" data-cancel>Отмена</button>
+        <button type="submit" class="pfa-button pfa-primary cursor-interaction" data-confirm>Сохранить</button>
+      </footer>
+    </form>
+  </dialog>
+</section>
+
+<style>
+  #pfa-current-demo {
+    color-scheme: light;
+    --pfa-text: #382d45;
+    --pfa-muted: #635a70;
+    --pfa-ui-accent: var(--pfa-muted);
+    --pfa-bg: #faf7fc;
+    --pfa-surface: #fdfaff;
+    --pfa-task-surface: #fff;
+    --pfa-border: #e9e0f0;
+    --pfa-control-ink: #33404c;
+    --pfa-control-border: color-mix(in srgb, var(--pfa-control-ink) 28%, transparent);
+    --pfa-control-border-hover: color-mix(in srgb, var(--pfa-control-ink) 50%, transparent);
+    --pfa-control-hover: color-mix(in srgb, var(--pfa-control-ink) 7%, transparent);
+    --pfa-control-main: #3e4b58;
+    --pfa-remaining: #e6a3a4;
+    --pfa-violet: #b99fdd;
+    --pfa-blog: #a0cbb7;
+    --pfa-agent: #a8bfe9;
+    --pfa-act: #deac8a;
+    --pfa-caption: color-mix(in srgb, var(--pfa-muted) 88%, var(--pfa-task-surface));
+    --pfa-error: #96394b;
+    --pfa-checkbox-border: #78838e;
+    --pfa-on-accent: #fff;
+    --pfa-input-surface: var(--pfa-task-surface);
+    --pfa-input-border: #d8cae5;
+    --pfa-overlay: #382d4526;
+    --pfa-menu-shadow: #382d451e;
+    --pfa-dialog-shadow: #382d4529;
+    --pfa-circle-size: 34px;
+    --pfa-panel-inset: 12px;
+    --pfa-grip-width: 20px;
+    position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    padding: clamp(12px, 3vw, 24px);
+    border-radius: 20px;
+    background: var(--pfa-bg);
+    color: var(--pfa-text);
+    font: 14px/1.45 system-ui, "Segoe UI", sans-serif;
+  }
+  #pfa-current-demo[data-theme="dark"] {
+    color-scheme: dark;
+    --pfa-text: #eceff4;
+    --pfa-muted: #b8c3d1;
+    --pfa-bg: #2e3440;
+    --pfa-surface: #3b4252;
+    --pfa-task-surface: var(--pfa-surface);
+    --pfa-border: #434c5e;
+    --pfa-control-ink: #d8dee9;
+    --pfa-control-main: var(--pfa-muted);
+    --pfa-remaining: #c36d76;
+    --pfa-violet: #b48ead;
+    --pfa-blog: #8fbcbb;
+    --pfa-agent: #81a1c1;
+    --pfa-act: #ebcb8b;
+    --pfa-error: #f0afb8;
+    --pfa-checkbox-border: #8592a6;
+    --pfa-on-accent: var(--pfa-bg);
+    --pfa-input-surface: var(--pfa-bg);
+    --pfa-input-border: #667286;
+    --pfa-overlay: #10141a80;
+    --pfa-menu-shadow: #10141a70;
+    --pfa-dialog-shadow: #10141a99;
+  }
+  #pfa-current-demo *, #pfa-current-demo *::before, #pfa-current-demo *::after { box-sizing: inherit; }
+  #pfa-current-demo [hidden] { display: none !important; }
+  #pfa-current-demo h1, #pfa-current-demo h2, #pfa-current-demo p { margin: 0; }
+  #pfa-current-demo h1 { color: var(--pfa-ui-accent); font-size: clamp(22px, 4.8vw, 29px); font-weight: 650; letter-spacing: -.035em; }
+  #pfa-current-demo h2 { font: inherit; font-weight: 650; }
+  #pfa-current-demo button { font: inherit; color: inherit; }
+  #pfa-current-demo input { font: inherit; }
+  #pfa-current-demo :is(button, input):focus-visible { outline: 2px solid var(--pfa-control-main); outline-offset: 2px; }
+  #pfa-current-demo :is(.pfa-toolbar .pfa-button, .pfa-circle, .pfa-grip, .pfa-disclosure):focus-visible { outline-color: var(--pfa-ui-accent); }
+  #pfa-current-demo :is(.pfa-dialog button, .pfa-menu button):focus-visible { outline-color: var(--pfa-ui-accent); outline-offset: 1px; }
+  #pfa-current-demo .pfa-page-header { margin-bottom: 16px; }
+  #pfa-current-demo .pfa-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  #pfa-current-demo .pfa-button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 5px 11px;
+    border: 1px solid var(--pfa-control-border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--pfa-control-ink);
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  #pfa-current-demo :is(.pfa-history, .pfa-period-trigger .pfa-button) {
+    min-height: 38px;
+    color: var(--pfa-ui-accent);
+    font-weight: 600;
+  }
+  #pfa-current-demo :is(.pfa-history, .pfa-period-trigger) {
+    border-color: color-mix(in srgb, var(--pfa-ui-accent) 50%, transparent);
+    background: var(--pfa-task-surface);
+  }
+  #pfa-current-demo .pfa-primary {
+    --pfa-confirm-tint: var(--pfa-ui-accent);
+    border-color: color-mix(in srgb, var(--pfa-confirm-tint) 35%, transparent);
+    color: var(--pfa-confirm-tint);
+    font-weight: 600;
+  }
+  #pfa-current-demo .pfa-danger {
+    --pfa-confirm-tint: var(--pfa-error);
+    background: color-mix(in srgb, var(--pfa-confirm-tint) 9%, var(--pfa-task-surface));
+  }
+  #pfa-current-demo .pfa-circle {
+    display: inline-grid;
+    place-items: center;
+    width: var(--pfa-circle-size);
+    height: var(--pfa-circle-size);
+    padding: 0;
+    border-radius: 50%;
+    color: var(--pfa-ui-accent);
+    font-size: 18px;
+    line-height: 1;
+  }
+  #pfa-current-demo .pfa-icon { display: inline-grid; flex: none; width: 16px; height: 16px; place-items: center; font-size: 16px; line-height: 1; color: inherit; }
+  #pfa-current-demo .pfa-icon > i { display: none; }
+  #pfa-current-demo .pfa-icon > span { display: grid; width: 100%; height: 100%; place-items: center; }
+  #pfa-current-demo .pfa-icon svg { display: block; width: 16px; height: 16px; }
+  #pfa-current-demo .pfa-icon:has(svg) > span { display: none; }
+  #pfa-current-demo :is(.pfa-plus, .pfa-close, .pfa-ellipsis) .pfa-icon > span { font-size: 0; }
+  #pfa-current-demo :is(.pfa-plus, .pfa-close) .pfa-icon > span {
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(currentColor, currentColor) center / 14px 2px no-repeat,
+      linear-gradient(currentColor, currentColor) center / 2px 14px no-repeat;
+  }
+  #pfa-current-demo .pfa-close .pfa-icon > span { transform: rotate(45deg) scale(.8); }
+  #pfa-current-demo .pfa-ellipsis .pfa-icon > span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: -5px 0 currentColor, 5px 0 currentColor;
+  }
+  #pfa-current-demo .pfa-period-control { position: relative; }
+  #pfa-current-demo .pfa-period-trigger {
+    display: flex;
+    align-items: stretch;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 10px;
+  }
+  #pfa-current-demo .pfa-period-trigger .pfa-button { border: 0; }
+  #pfa-current-demo .pfa-period-trigger .pfa-period-clear {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    padding: 0;
+    border-inline-start: 1px solid var(--pfa-border);
+    border-radius: 0 9px 9px 0;
+  }
+  #pfa-current-demo .pfa-period-trigger:has([aria-expanded="true"]) { border-color: var(--pfa-ui-accent); }
+  #pfa-current-demo .pfa-period-picker {
+    position: absolute;
+    z-index: 10;
+    inset: calc(100% + 8px) auto auto 0;
+    width: min(328px, calc(100vw - 44px));
+    border: 1px solid var(--pfa-border);
+    border-radius: 14px;
+    background: var(--pfa-task-surface);
+    color: var(--pfa-text);
+    box-shadow: 0 8px 24px var(--pfa-overlay);
+  }
+  #pfa-current-demo .pfa-calendar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--pfa-border);
+    border-radius: 13px 13px 0 0;
+    background: var(--pfa-bg);
+  }
+  #pfa-current-demo .pfa-calendar-head h2::first-letter { text-transform: uppercase; }
+  #pfa-current-demo .pfa-calendar-content { padding: 8px 10px 2px; }
+  #pfa-current-demo :is(.pfa-calendar-week, .pfa-calendar-days) {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    text-align: center;
+  }
+  #pfa-current-demo .pfa-calendar-days { row-gap: 2px; }
+  #pfa-current-demo .pfa-calendar-week { margin-bottom: 5px; color: var(--pfa-muted); font-size: 12px; }
+  #pfa-current-demo .pfa-calendar-day {
+    min-width: 0;
+    min-height: 34px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #pfa-current-demo .pfa-calendar-day.is-outside { color: var(--pfa-muted); }
+  #pfa-current-demo .pfa-calendar-day[aria-pressed="true"] {
+    border-radius: 0;
+    background: color-mix(in srgb, var(--pfa-ui-accent) 10%, var(--pfa-task-surface));
+    color: var(--pfa-text);
+  }
+  #pfa-current-demo .pfa-calendar-day.is-start { border-radius: 7px 0 0 7px; border-color: var(--pfa-ui-accent); font-weight: 650; }
+  #pfa-current-demo .pfa-calendar-day.is-end { border-radius: 0 7px 7px 0; border-color: var(--pfa-ui-accent); font-weight: 650; }
+  #pfa-current-demo .pfa-calendar-day.is-start:is(.is-end, .is-pending) { border-radius: 7px; }
+  #pfa-current-demo .pfa-calendar-day[aria-current="date"] { text-decoration: underline; text-underline-offset: .2em; }
+  #pfa-current-demo .pfa-calendar-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px 10px;
+  }
+  #pfa-current-demo .pfa-calendar-footer p { flex: 1; color: var(--pfa-muted); font-size: 12px; }
+  #pfa-current-demo .pfa-calendar-footer button:disabled { opacity: .5; cursor: not-allowed; }
+  #pfa-current-demo [data-lists] { display: grid; gap: 12px; }
+  #pfa-current-demo .pfa-panel { background: var(--pfa-surface); border: 1px solid var(--pfa-border); border-radius: 14px; }
+  #pfa-current-demo .pfa-today {
+    --pfa-project: var(--pfa-remaining);
+    --pfa-highlight: var(--pfa-remaining);
+  }
+  #pfa-current-demo .pfa-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 6px var(--pfa-panel-inset);
+    border-bottom: 1px solid var(--pfa-border);
+    border-radius: 13px 13px 0 0;
+    background: color-mix(in srgb, var(--pfa-project, var(--pfa-border)) 29%, var(--pfa-surface));
+  }
+  #pfa-current-demo .pfa-panel-head h2 { flex: 1; }
+  #pfa-current-demo .pfa-panel:has(> .pfa-project-tasks[hidden]) > .pfa-panel-head {
+    border-bottom: 0;
+    border-radius: 13px;
+  }
+  #pfa-current-demo .pfa-project-emoji {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 1.25em;
+    height: 1.25em;
+    font: 16px/1 "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  }
+  #pfa-current-demo .pfa-list { list-style: none; margin: 0; padding: 0; }
+  #pfa-current-demo :is(.pfa-list, .pfa-empty) {
+    border-radius: 0 0 13px 13px;
+    background: var(--pfa-task-surface);
+  }
+  #pfa-current-demo .pfa-row {
+    --pfa-row-accent: var(--pfa-project);
+    --pfa-row-highlight: color-mix(in srgb, var(--pfa-row-accent) 16%, var(--pfa-task-surface));
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 44px;
+    padding: 5px var(--pfa-panel-inset);
+    border-bottom: 1px solid var(--pfa-border);
+  }
+  #pfa-current-demo .pfa-row:last-child {
+    padding-bottom: 6px;
+    border-bottom: 0;
+    border-radius: 0 0 13px 13px;
+  }
+  #pfa-current-demo .pfa-today .pfa-row { --pfa-row-accent: var(--pfa-remaining); }
+  #pfa-current-demo .pfa-row-actions { display: flex; align-items: center; flex: none; gap: 10px; }
+  #pfa-current-demo .pfa-row:has(:focus-visible) { background: var(--pfa-row-highlight); }
+  #pfa-current-demo .pfa-row-actions .pfa-button:is(:focus-visible, :active) { background: var(--pfa-control-hover); }
+  #pfa-current-demo .pfa-row.is-done .pfa-title { color: var(--pfa-muted); }
+  #pfa-current-demo .pfa-row.is-done .pfa-task-text { text-decoration: line-through; text-decoration-thickness: 1px; }
+  #pfa-current-demo .pfa-checkbox {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 20px;
+    height: 24px;
+  }
+  #pfa-current-demo .pfa-checkbox input {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+  }
+  #pfa-current-demo .pfa-checkbox-mark {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--pfa-checkbox-border);
+    border-radius: 50%;
+    background: var(--pfa-surface);
+    color: var(--pfa-on-accent);
+  }
+  #pfa-current-demo .pfa-checkbox input:checked + .pfa-checkbox-mark {
+    border-color: var(--pfa-ui-accent);
+    background: var(--pfa-ui-accent);
+  }
+  #pfa-current-demo .pfa-checkbox input:checked + .pfa-checkbox-mark::after {
+    content: "";
+    width: 5px;
+    height: 8px;
+    margin-top: -2px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+  }
+  #pfa-current-demo .pfa-checkbox input:focus-visible + .pfa-checkbox-mark {
+    outline: 2px solid var(--pfa-control-main);
+    outline-offset: 2px;
+  }
+  @media (forced-colors: active) {
+    #pfa-current-demo .pfa-checkbox-mark { forced-color-adjust: none; border-color: CanvasText; background: Canvas; }
+    #pfa-current-demo .pfa-checkbox input:checked + .pfa-checkbox-mark { border-color: Highlight; background: Highlight; color: HighlightText; }
+  }
+  #pfa-current-demo .pfa-task-label { flex: 1; min-width: 0; }
+  #pfa-current-demo .pfa-title {
+    display: inline-block;
+    max-width: 100%;
+    padding: 4px 2px;
+    border-radius: 6px;
+    color: inherit;
+    text-decoration: none;
+    text-underline-offset: .22em;
+    text-decoration-thickness: 1px;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  #pfa-current-demo .pfa-project-name { font-weight: 600; }
+  #pfa-current-demo :is(.pfa-grip, .pfa-grip-space, .pfa-disclosure) { flex: none; width: var(--pfa-grip-width); }
+  #pfa-current-demo :is(.pfa-grip, .pfa-disclosure) { min-height: 34px; padding: 0; background: none; border: 0; border-radius: 6px; color: var(--pfa-ui-accent); }
+  #pfa-current-demo .pfa-grip { cursor: grab; }
+  #pfa-current-demo .pfa-disclosure { display: inline-grid; place-items: center; }
+  #pfa-current-demo .pfa-disclosure[aria-expanded="true"] .pfa-icon { transform: rotate(90deg); }
+  #pfa-current-demo .pfa-menu-anchor { position: relative; flex: none; }
+  #pfa-current-demo .pfa-menu-anchor > [aria-expanded="true"] { background: var(--pfa-control-hover); }
+  #pfa-current-demo .pfa-menu {
+    position: absolute;
+    z-index: 3;
+    inset: calc(100% + 5px) 0 auto auto;
+    width: min(272px, calc(100vw - 52px));
+    padding: 5px;
+    border: 1px solid var(--pfa-border);
+    border-radius: 13px;
+    background: var(--pfa-task-surface);
+    box-shadow: 0 8px 24px var(--pfa-menu-shadow);
+  }
+  #pfa-current-demo .pfa-menu.above { inset: auto 0 calc(100% + 5px) auto; }
+  #pfa-current-demo .pfa-menu.for-grip { inset-inline: 0 auto; width: max-content; max-width: calc(100vw - 52px); }
+  #pfa-current-demo .pfa-menu.for-actions::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    right: calc(var(--pfa-circle-size) / 2 - 6px);
+    width: 10px;
+    height: 10px;
+    background: var(--pfa-task-surface);
+    border-top: 1px solid var(--pfa-border);
+    border-left: 1px solid var(--pfa-border);
+    transform: rotate(45deg);
+    pointer-events: none;
+  }
+  #pfa-current-demo .pfa-menu.for-actions.above::before { top: auto; bottom: -6px; transform: rotate(225deg); }
+  #pfa-current-demo .pfa-menu button { display: flex; width: 100%; gap: 8px; align-items: flex-start; padding: 8px; text-align: left; border: 0; border-radius: 8px; background: transparent; font-size: 13px; }
+  #pfa-current-demo .pfa-menu.for-actions button + button { border-top: 1px solid var(--pfa-border); }
+  #pfa-current-demo .pfa-menu button:disabled { opacity: .45; }
+  #pfa-current-demo .pfa-menu small { display: block; margin-top: 2px; color: var(--pfa-muted); font-size: 12px; }
+  #pfa-current-demo .pfa-menu .pfa-icon { margin-top: 1px; color: var(--pfa-ui-accent); }
+  #pfa-current-demo .pfa-empty {
+    padding: 14px 13px;
+    color: var(--pfa-caption);
+    text-align: center;
+  }
+  #pfa-current-demo .pfa-drop { outline: 2px dashed var(--pfa-control-main); outline-offset: -2px; border-radius: 8px; }
+  #pfa-current-demo .pfa-status:not(:empty) {
+    position: sticky;
+    z-index: 4;
+    bottom: 8px;
+    width: fit-content;
+    max-width: 100%;
+    margin: 8px auto 0;
+    padding: 6px 12px;
+    border-radius: 14px;
+    background: var(--pfa-control-main);
+    color: var(--pfa-on-accent);
+    font-size: 13px;
+  }
+  #pfa-current-demo .pfa-dialog {
+    width: min(430px, calc(100% - 28px));
+    max-height: calc(100% - 24px);
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--pfa-border);
+    border-radius: 16px;
+    background: var(--pfa-task-surface);
+    color: var(--pfa-text);
+    box-shadow: 0 12px 36px var(--pfa-dialog-shadow);
+  }
+  #pfa-current-demo .pfa-dialog::backdrop { background: var(--pfa-overlay); }
+  #pfa-current-demo .pfa-dialog-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--pfa-border);
+    background: var(--pfa-bg);
+  }
+  #pfa-current-demo .pfa-dialog-symbol {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    flex: none;
+    color: var(--pfa-ui-accent);
+  }
+  #pfa-current-demo .pfa-dialog h2 { flex: 1; font-size: 16px; overflow-wrap: anywhere; }
+  #pfa-current-demo .pfa-dialog-body { padding: 14px; }
+  #pfa-current-demo .pfa-dialog footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 14px 12px;
+  }
+  #pfa-current-demo .pfa-fields { display: grid; gap: 9px; overflow-wrap: anywhere; }
+  #pfa-current-demo .pfa-fields label { display: grid; gap: 4px; }
+  #pfa-current-demo .pfa-fields input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 9px; border: 1px solid var(--pfa-input-border); border-radius: 8px; background: var(--pfa-input-surface); color: var(--pfa-text); font-size: 16px; }
+  #pfa-current-demo[data-theme="dark"] .pfa-fields input::placeholder { color: var(--pfa-muted); opacity: 1; }
+  #pfa-current-demo .pfa-task-name { margin-top: 4px; }
+  #pfa-current-demo .pfa-task-name span { color: var(--pfa-caption); font-size: 12px; }
+  #pfa-current-demo .pfa-task-name input:focus {
+    --pfa-highlight: var(--pfa-violet);
+    outline: none;
+  }
+  #pfa-current-demo :is(.pfa-today, .pfa-task-name input:focus) {
+    border-color: color-mix(in srgb, var(--pfa-highlight) 38%, var(--pfa-surface));
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--pfa-highlight) 24%, transparent);
+  }
+  @media (forced-colors: active) {
+    #pfa-current-demo .pfa-task-name input:focus { outline: 2px solid Highlight; }
+  }
+  #pfa-current-demo .pfa-project-context {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  #pfa-current-demo .pfa-task-summary { list-style: none; margin: 0; padding: 0; }
+  #pfa-current-demo .pfa-task-summary li { display: flex; align-items: flex-start; gap: 8px; padding: 7px 2px; }
+  #pfa-current-demo .pfa-task-summary li + li { border-top: 1px solid var(--pfa-border); }
+  #pfa-current-demo .pfa-error { margin-top: 7px; color: var(--pfa-error); }
+  @media (hover: hover) {
+    #pfa-current-demo .pfa-button:hover, #pfa-current-demo .pfa-menu button:not(:disabled):hover { background: var(--pfa-control-hover); }
+    #pfa-current-demo .pfa-circle:hover { border-color: var(--pfa-control-border-hover); }
+    #pfa-current-demo :is(.pfa-history, .pfa-period-trigger):hover {
+      background: var(--pfa-task-surface);
+      border-color: var(--pfa-ui-accent);
+    }
+    #pfa-current-demo :is(.pfa-dialog .pfa-button, .pfa-period-picker .pfa-button:not(:disabled)):hover {
+      background: transparent;
+      border-color: var(--pfa-ui-accent);
+    }
+    #pfa-current-demo .pfa-period-trigger .pfa-button:hover { background: transparent; }
+    #pfa-current-demo .pfa-dialog .pfa-danger:hover {
+      background: color-mix(in srgb, var(--pfa-confirm-tint) 15%, var(--pfa-task-surface));
+      border-color: var(--pfa-confirm-tint);
+    }
+    #pfa-current-demo .pfa-calendar-day:hover { border-color: var(--pfa-ui-accent); }
+    #pfa-current-demo .pfa-row:hover { background: var(--pfa-row-highlight); }
+    #pfa-current-demo .pfa-title:hover { text-decoration-line: underline; }
+    #pfa-current-demo :is(.pfa-grip, .pfa-disclosure):hover { background: color-mix(in srgb, var(--pfa-row-accent, var(--pfa-project)) 28%, var(--pfa-surface)); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #pfa-current-demo :is(.pfa-button, .pfa-row, .pfa-grip, .pfa-disclosure, .pfa-title, .pfa-menu button) {
+      transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+    }
+    #pfa-current-demo .pfa-disclosure .pfa-icon { transition: transform 140ms ease; }
+  }
+  @media (max-width: 410px) {
+    #pfa-current-demo { --pfa-panel-inset: 8px; }
+    #pfa-current-demo .pfa-button { padding-inline: 7px; }
+    #pfa-current-demo .pfa-circle { padding: 0; }
+    #pfa-current-demo .pfa-row { gap: 5px; }
+    #pfa-current-demo .pfa-row-actions { gap: 6px; }
+    #pfa-current-demo .pfa-project-emoji { font-size: 15px; }
+  }
+  @media (pointer: coarse) {
+    #pfa-current-demo { --pfa-circle-size: 44px; --pfa-grip-width: 28px; }
+    #pfa-current-demo .pfa-button, #pfa-current-demo :is(.pfa-history, .pfa-period-trigger .pfa-button), #pfa-current-demo .pfa-menu button { min-height: 44px; }
+    #pfa-current-demo .pfa-checkbox { width: 40px; height: 44px; }
+    #pfa-current-demo :is(.pfa-grip, .pfa-disclosure) { min-height: 44px; }
+    #pfa-current-demo .pfa-disclosure { min-width: 44px; }
+    #pfa-current-demo .pfa-period-trigger .pfa-period-clear { width: 44px; }
+    #pfa-current-demo .pfa-calendar-day { min-height: 38px; }
+  }
+</style>
+
+<script>
+(() => {
+  const root = document.getElementById("pfa-current-demo");
+  const periodControl = root.querySelector("[data-period-control]");
+  const periodTrigger = periodControl.querySelector("[data-action='period']");
+  const periodClear = periodControl.querySelector("[data-action='clear-period']");
+  const periodPicker = periodControl.querySelector("#pfa-period-picker");
+  const calendarMonth = periodPicker.querySelector("[data-calendar-month]");
+  const calendarDays = periodPicker.querySelector("[data-calendar-days]");
+  const calendarSelection = periodPicker.querySelector("[data-calendar-selection]");
+  const periodApply = periodPicker.querySelector("[data-action='apply-period']");
+  const lists = root.querySelector("[data-lists]");
+  const dialog = root.querySelector("dialog");
+  const form = dialog.querySelector("form");
+  const dialogSymbol = dialog.querySelector("[data-dialog-symbol]");
+  const fields = dialog.querySelector("[data-dialog-content]");
+  const error = dialog.querySelector("[data-error]");
+  const status = root.querySelector("[data-status]");
+  const confirmButton = dialog.querySelector("[data-confirm]");
+  const cancelButton = dialog.querySelector("[data-cancel]");
+  const projects = [
+    { id: "blog", name: "Блог", emoji: "📝" },
+    { id: "agent", name: "Project Flow Agent", emoji: "🧭" },
+    { id: "act", name: "ACT практики бот", emoji: "🪷" }
+  ];
+  const initial = {
+    version: 1,
+    start: "2026-11-23", end: "2026-11-29", nextId: 9,
+    projectOrder: projects.map(project => project.id),
+    collapsedProjects: [],
+    lists: { today: [1, 2], blog: [3, 4], agent: [5, 6], act: [7, 8] },
+    tasks: {
+      1: { project: "blog", title: "Разложить текст на кадры", done: false },
+      2: { project: "agent", title: "Проверить сборку", done: true },
+      3: { project: "blog", title: "Уточнить текст", done: false },
+      4: { project: "blog", title: "Собрать черновик", done: true },
+      5: { project: "agent", title: "Проверить ссылки", done: false },
+      6: { project: "agent", title: "Сверить список", done: false },
+      7: { project: "act", title: "Согласовать сценарий", done: false },
+      8: { project: "act", title: "Собрать требования", done: false }
+    },
+    queues: { blog: [], agent: [], act: [] },
+    archive: [], history: []
+  };
+
+  let state = initialState(window.openai?.widgetState);
+  let menu, modal, periodDraft, dragged, flashTimer;
+
+  function initialState(saved) {
+    const snapshot = saved?.privateContent;
+    const restored = structuredClone(snapshot?.version === initial.version ? snapshot : initial);
+    restored.collapsedProjects ??= [];
+    return restored;
+  }
+
+  const html = value => String(value).replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[char]);
+  const icon = (name, glyph) => `<span class="pfa-icon" aria-hidden="true"><i data-lucide="${name}"></i><span>${glyph}</span></span>`;
+  const paintIcons = () => globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  const projectFor = id => projects.find(project => project.id === id);
+  const calendarDate = value => new Date(value + "T00:00:00Z");
+  const dateKey = (year, month, day) => new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+  const monthStart = value => value.slice(0, 7) + "-01";
+  const shortDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
+  const longDate = new Intl.DateTimeFormat("ru-RU", { dateStyle: "full", timeZone: "UTC" });
+  const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long", timeZone: "UTC" });
+  const dayOffsets = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+  const numberOfTasks = count => new Intl.PluralRules("ru").select(count) === "one"
+    ? `${count} задача` : `${count} ${new Intl.PluralRules("ru").select(count) === "few" ? "задачи" : "задач"}`;
+
+  function save() {
+    window.openai?.setWidgetState?.({ privateContent: state })?.catch(() => {});
+  }
+
+  function flash(message) {
+    clearTimeout(flashTimer);
+    status.textContent = message;
+    flashTimer = setTimeout(() => { status.textContent = ""; }, 4000);
+  }
+
+  function periodText(from = state.start, to = state.end) {
+    if (!from || !to) return "Выбрать даты";
+    const start = calendarDate(from);
+    const end = calendarDate(to);
+    if (from === to) return shortDate.format(start);
+    if (monthStart(from) === monthStart(to)) return `${start.getUTCDate()}–${shortDate.format(end)}`;
+    const format = start.getUTCFullYear() === end.getUTCFullYear() ? shortDate
+      : new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    return `${format.format(start)} — ${format.format(end)}`;
+  }
+
+  function grip(group, id, label) {
+    return `<span class="pfa-menu-anchor"><button class="pfa-grip cursor-interaction" type="button" draggable="true"
+      data-action="order" data-group="${group}" data-id="${id}" aria-expanded="false"
+      aria-label="Изменить порядок: ${html(label)}">${icon("grip-vertical", "⠿")}</button></span>`;
+  }
+
+  const projectEmoji = project => `<span class="pfa-project-emoji" aria-hidden="true">${html(project.emoji)}</span>`;
+  const projectContext = project => `<p class="pfa-project-context">
+    ${projectEmoji(project)}<span>${html(project.name)}</span>
+  </p>`;
+
+  function taskRow(group, id, canReorder) {
+    const task = state.tasks[id];
+    const title = html(task.title);
+    const project = projectFor(task.project);
+    const today = group === "today";
+    const moveLabel = today ? "Вернуть в список проекта" : "Добавить в «Сегодня»";
+    return `<li class="pfa-row${task.done ? " is-done" : ""}" data-item-group="${group}" data-item-id="${id}"
+        style="--pfa-project:var(--pfa-${project.id})">
+      ${canReorder ? grip(group, id, task.title) : '<span class="pfa-grip-space" aria-hidden="true"></span>'}
+      <label class="pfa-checkbox">
+        <input type="checkbox" class="cursor-interaction" data-check="${id}" aria-label="Выполнено: ${title}" ${task.done ? "checked" : ""}>
+        <span class="pfa-checkbox-mark" aria-hidden="true"></span>
+      </label>
+      ${today ? projectEmoji(project) : ""}
+      <div class="pfa-task-label">
+        <span class="pfa-title">
+          ${today ? `<span class="pfa-project-name">${html(project.name)}:</span> ` : ""}<span class="pfa-task-text">${title}</span>
+        </span>
+      </div>
+      <div class="pfa-row-actions">
+        <button type="button" class="pfa-button pfa-circle cursor-interaction"
+          data-action="move" data-group="${group}" data-id="${id}" aria-label="${moveLabel}" data-tooltip="${moveLabel}">
+          ${today ? icon("arrow-down", "↓") : icon("arrow-up", "↑")}
+        </button>
+        <span class="pfa-menu-anchor"><button type="button" class="pfa-button pfa-circle pfa-ellipsis cursor-interaction"
+          data-action="menu" data-group="${group}" data-id="${id}" aria-expanded="false" aria-label="Действия: ${title}">
+          ${icon("ellipsis", "⋯")}
+        </button></span>
+      </div>
+    </li>`;
+  }
+
+  function taskList(group) {
+    const ids = state.lists[group];
+    if (!ids.length) return `<p class="pfa-empty">${group === "today" ? "На сегодня пока нет задач" : "На этот период задач нет"}</p>`;
+    const canReorder = ids.length > 1;
+    return `<ul class="pfa-list">${ids.map(id => taskRow(group, id, canReorder)).join("")}</ul>`;
+  }
+
+  function projectPanel(id) {
+    const project = projectFor(id);
+    const collapsed = state.collapsedProjects.includes(id);
+    const contentId = `pfa-project-tasks-${id}`;
+    return `<section class="pfa-panel" aria-label="${html(project.name)}" style="--pfa-project:var(--pfa-${project.id})"
+        data-item-group="projects" data-item-id="${id}">
+      <header class="pfa-panel-head">
+        <button type="button" class="pfa-disclosure cursor-interaction" data-action="toggle-project" data-id="${id}"
+          aria-label="Список задач проекта «${html(project.name)}»" aria-controls="${contentId}" aria-expanded="${!collapsed}"
+          data-tooltip="Свернуть или развернуть задачи">${icon("chevron-right", "›")}</button>
+        ${projectEmoji(project)}
+        <h2><span class="pfa-title">${html(project.name)}</span></h2>
+        <button type="button" class="pfa-button pfa-circle pfa-plus cursor-interaction"
+          data-action="create" data-id="${id}" aria-label="Новая задача: ${html(project.name)}">${icon("plus", "+")}</button>
+        <button type="button" class="pfa-button pfa-circle cursor-interaction" data-action="archive-project" data-id="${id}"
+          aria-label="Архивировать проект «${html(project.name)}»" data-tooltip="Архивировать проект">${icon("trash-2", "🗑︎")}</button>
+      </header>
+      <div class="pfa-project-tasks" id="${contentId}"${collapsed ? " hidden" : ""}>${taskList(id)}</div>
+    </section>`;
+  }
+
+  function render() {
+    closeMenu();
+    periodTrigger.querySelector("[data-period]").textContent = periodText();
+    periodClear.hidden = !state.start || !state.end;
+    lists.innerHTML = `<section class="pfa-panel pfa-today" aria-labelledby="pfa-today-heading">
+      <header class="pfa-panel-head">
+        <h2 id="pfa-today-heading">Сегодня</h2>
+      </header>
+      ${taskList("today")}
+    </section>${state.projectOrder.map(projectPanel).join("")}`;
+    paintIcons();
+  }
+
+  function toggleProject(button, id) {
+    const content = document.getElementById(button.getAttribute("aria-controls"));
+    const collapse = !content.hidden;
+    content.hidden = collapse;
+    button.setAttribute("aria-expanded", String(!collapse));
+    state.collapsedProjects = collapse
+      ? [...state.collapsedProjects, id]
+      : state.collapsedProjects.filter(projectId => projectId !== id);
+    save();
+  }
+
+  function closeMenu(restoreFocus = false) {
+    if (!menu) return;
+    menu.trigger.setAttribute("aria-expanded", "false");
+    menu.popup.remove();
+    if (restoreFocus) menu.trigger.focus();
+    menu = null;
+  }
+
+  function showMenu(trigger, order = false) {
+    const same = menu?.trigger === trigger;
+    closeMenu();
+    if (same) return;
+    const { group, id } = trigger.dataset;
+    const popup = document.createElement("div");
+    popup.className = "pfa-menu " + (order ? "for-grip" : "for-actions");
+    popup.setAttribute("role", "group");
+    popup.setAttribute("aria-label", trigger.getAttribute("aria-label"));
+    if (order) {
+      const items = state.lists[group];
+      const index = items.indexOf(Number(id));
+      popup.innerHTML = `<button class="cursor-interaction" type="button" data-action="reorder" data-step="-1" ${index === 0 ? "disabled" : ""}>↑ Выше</button>
+        <button class="cursor-interaction" type="button" data-action="reorder" data-step="1" ${index === items.length - 1 ? "disabled" : ""}>↓ Ниже</button>`;
+    } else {
+      popup.innerHTML = `<button class="cursor-interaction" type="button" data-action="rename">${icon("pencil", "✎")}Переименовать</button>
+        <button class="cursor-interaction" type="button" data-action="queue">${icon("inbox", "▤")}<span>Убрать из текущих задач<small>Задача вернётся в очередь проекта</small></span></button>
+        <button class="cursor-interaction" type="button" data-action="archive">${icon("trash-2", "×")}<span>Удалить задачу<small>Файл переместится в архив</small></span></button>`;
+    }
+    trigger.parentElement.append(popup);
+    trigger.setAttribute("aria-expanded", "true");
+    menu = { trigger, popup, group, id };
+    paintIcons();
+    if (popup.getBoundingClientRect().bottom > Math.min(root.getBoundingClientRect().bottom, window.innerHeight)) {
+      const spaceAbove = trigger.getBoundingClientRect().top - Math.max(0, root.getBoundingClientRect().top);
+      popup.classList.toggle("above", spaceAbove >= popup.offsetHeight + 5);
+    }
+    popup.querySelector("button:not(:disabled)")?.focus();
+  }
+
+  function openDialog({ title, symbol, content, label, danger = false, onSubmit, source }) {
+    modal = { onSubmit, source };
+    dialog.querySelector("h2").textContent = title;
+    dialogSymbol.innerHTML = symbol;
+    fields.innerHTML = content;
+    error.hidden = true;
+    error.textContent = "";
+    confirmButton.hidden = !onSubmit;
+    confirmButton.textContent = label || "Сохранить";
+    confirmButton.classList.toggle("pfa-danger", danger);
+    cancelButton.textContent = onSubmit ? "Отмена" : "Закрыть";
+    dialog.showModal();
+    paintIcons();
+    const input = fields.querySelector("input");
+    if (input) {
+      input.focus();
+      if (input.type === "text") input.setSelectionRange(input.value.length, input.value.length);
+    } else {
+      cancelButton.focus();
+    }
+  }
+
+  function namedTask(project, id, source) {
+    const task = state.tasks[id];
+    openDialog({
+      title: task ? "Переименовать задачу" : "Новая задача",
+      symbol: task ? icon("pencil", "✎") : icon("plus", "+"),
+      content: `${projectContext(projectFor(project))}
+        <label class="pfa-task-name">
+          <input name="taskName" type="text" value="${html(task?.title || "")}" placeholder="Например, сверить список">
+          <span>Название задачи</span>
+        </label>`,
+      label: task ? "Сохранить" : "Создать",
+      source,
+      onSubmit(values) {
+        const name = values.get("taskName");
+        if (!name.trim()) return "Введите название задачи";
+        if (name !== name.trim() || name.endsWith(".") || /[<>:"/\\|?*#\[\]^]/.test(name) || /\.md$/i.test(name)
+          || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i.test(name) || name.length > 200) {
+          return "Введите название без недопустимых символов, пробелов по краям и расширения .md";
+        }
+        const duplicate = Object.entries(state.tasks).some(([key, item]) =>
+          Number(key) !== id && !state.archive.includes(Number(key)) && !state.history.includes(Number(key))
+          && item.project === project && item.title.toLowerCase() === name.toLowerCase());
+        if (duplicate) return "В этом проекте уже есть задача с таким названием";
+        if (task) task.title = name;
+        else {
+          const newId = state.nextId++;
+          state.tasks[newId] = { project, title: name, done: false };
+          state.lists[project].push(newId);
+          state.collapsedProjects = state.collapsedProjects.filter(projectId => projectId !== project);
+        }
+        update(task ? "Задача переименована" : "Задача добавлена в список проекта");
+      }
+    });
+  }
+
+  function todayKey() {
+    const now = new Date();
+    return dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  function renderCalendar(focusDate) {
+    const { month, start, end } = periodDraft;
+    const first = calendarDate(month);
+    const year = first.getUTCFullYear();
+    const index = first.getUTCMonth();
+    const offset = (first.getUTCDay() + 6) % 7;
+    const today = todayKey();
+    calendarMonth.textContent = `${monthName.format(first)} ${year}`;
+    calendarDays.innerHTML = Array.from({ length: 42 }, (_, cell) => {
+      const value = dateKey(year, index, cell - offset + 1);
+      const date = calendarDate(value);
+      const selected = Boolean(start && value >= start && value <= (end || start));
+      const classes = ["pfa-calendar-day", "cursor-interaction"];
+      if (monthStart(value) !== month) classes.push("is-outside");
+      if (value === start) classes.push("is-start");
+      if (value === end) classes.push("is-end");
+      if (value === start && !end) classes.push("is-pending");
+      return `<button type="button" class="${classes.join(" ")}" data-action="period-day" data-date="${value}"
+        aria-label="${html(longDate.format(date))}" aria-pressed="${selected}"${value === today ? ' aria-current="date"' : ""}>${date.getUTCDate()}</button>`;
+    }).join("");
+    calendarSelection.textContent = start && end ? periodText(start, end) : start ? "Выбери дату окончания" : "Выбери дату начала";
+    periodApply.disabled = !start || !end;
+    if (focusDate) calendarDays.querySelector(`[data-date="${focusDate}"]`)?.focus({ preventScroll: true });
+  }
+
+  function togglePeriodPicker() {
+    if (periodDraft) {
+      closePeriodPicker(true);
+      return;
+    }
+    const firstDate = state.start || todayKey();
+    periodDraft = { month: monthStart(firstDate), start: state.start, end: state.end };
+    periodPicker.hidden = false;
+    periodTrigger.setAttribute("aria-expanded", "true");
+    renderCalendar(firstDate);
+  }
+
+  function closePeriodPicker(restoreFocus = false) {
+    if (!periodDraft) return;
+    periodDraft = null;
+    periodPicker.hidden = true;
+    periodTrigger.setAttribute("aria-expanded", "false");
+    if (restoreFocus) periodTrigger.focus({ preventScroll: true });
+  }
+
+  function shiftCalendarMonth(step) {
+    const month = calendarDate(periodDraft.month);
+    periodDraft.month = dateKey(month.getUTCFullYear(), month.getUTCMonth() + step, 1);
+    renderCalendar();
+  }
+
+  function selectPeriodDay(date) {
+    if (!periodDraft.start || periodDraft.end) {
+      periodDraft.start = date;
+      periodDraft.end = null;
+    } else {
+      [periodDraft.start, periodDraft.end] = [periodDraft.start, date].sort();
+    }
+    periodDraft.month = monthStart(date);
+    renderCalendar(date);
+  }
+
+  function savePeriod(start, end) {
+    state.start = start;
+    state.end = end;
+    closePeriodPicker();
+    update(start ? "Период обновлён" : "Даты периода удалены");
+    periodTrigger.focus({ preventScroll: true });
+  }
+
+  function taskNames(ids) {
+    return `<ul class="pfa-task-summary">${ids.map(id => {
+      const task = state.tasks[id];
+      const project = projectFor(task.project);
+      return `<li>${projectEmoji(project)}<span><strong class="pfa-project-name">${html(project.name)}:</strong> ${html(task.title)}</span></li>`;
+    }).join("")}</ul>`;
+  }
+
+  function sendToHistory(source) {
+    const done = Object.values(state.lists).flat().filter(id => state.tasks[id].done);
+    openDialog({
+      title: "Перенести выполненные в историю",
+      symbol: icon("archive", "▤"),
+      content: done.length ? taskNames(done) : "<p>Ни одна задача пока не отмечена выполненной</p>",
+      label: "Перенести",
+      source,
+      onSubmit: done.length ? () => {
+        for (const group of Object.keys(state.lists)) {
+          state.lists[group] = state.lists[group].filter(id => !done.includes(id));
+        }
+        state.history.unshift(...done);
+        update(`В истории: ${numberOfTasks(done.length)}`);
+      } : undefined
+    });
+  }
+
+  function removeFrom(group, id) {
+    state.lists[group] = state.lists[group].filter(item => item !== id);
+  }
+
+  function move(group, id) {
+    removeFrom(group, id);
+    const task = state.tasks[id];
+    if (group === "today") state.lists[task.project].unshift(id);
+    else state.lists.today.push(id);
+    update(group === "today" ? "Задача возвращена в проект" : "Задача добавлена в «Сегодня»");
+  }
+
+  function archive(group, id, source) {
+    openDialog({
+      title: "Удалить задачу?",
+      symbol: icon("trash-2", "🗑︎"),
+      content: `${projectContext(projectFor(state.tasks[id].project))}
+        <p>Файл «${html(state.tasks[id].title)}» переместится в архив проекта.</p>`,
+      label: "В архив", danger: true, source,
+      onSubmit: () => {
+        removeFrom(group, id);
+        state.archive.unshift(id);
+        update("Задача перемещена в архив");
+      }
+    });
+  }
+
+  function archiveProject(id, source) {
+    const project = projectFor(id);
+    openDialog({
+      title: "Архивировать проект?",
+      symbol: icon("archive", "▤"),
+      content: `${projectContext(project)}
+        <p>Задачи из «Сегодня» и плана вернутся в очередь проекта. После архивации проект исчезнет из текущих задач.</p>`,
+      label: "В архив", source,
+      onSubmit: () => {
+        const today = state.lists.today;
+        const projectTasks = today.filter(taskId => state.tasks[taskId].project === id);
+        state.lists.today = today.filter(taskId => state.tasks[taskId].project !== id);
+        state.queues[id].unshift(...projectTasks, ...state.lists[id]);
+        state.lists[id] = [];
+        state.projectOrder = state.projectOrder.filter(projectId => projectId !== id);
+        state.collapsedProjects = state.collapsedProjects.filter(projectId => projectId !== id);
+        update("Проект перемещён в архив");
+      }
+    });
+  }
+
+  function update(message) {
+    render();
+    save();
+    if (message) flash(message);
+  }
+
+  function reorder(group, id, index) {
+    const items = state.lists[group];
+    const item = Number(id);
+    const from = items.indexOf(item);
+    if (from === -1 || index < 0 || index >= items.length || index === from) return;
+    items.splice(from, 1);
+    items.splice(index, 0, item);
+    update("Порядок изменён");
+    root.querySelector(`[data-action="order"][data-group="${group}"][data-id="${item}"]`)?.focus({ preventScroll: true });
+  }
+
+  root.addEventListener("click", event => {
+    const control = event.target.closest("button[data-action]");
+    if (!control || !root.contains(control)) {
+      if (!menu?.popup.contains(event.target)) closeMenu();
+      if (event.target === dialog) dialog.close();
+      return;
+    }
+    if (!periodControl.contains(control)) closePeriodPicker();
+    const { action, group, id } = control.dataset;
+    if (action === "menu" || action === "order") {
+      showMenu(control, action === "order");
+      return;
+    }
+    const currentMenu = menu;
+    closeMenu();
+    const taskId = Number(id);
+    const selectedId = Number(currentMenu?.id);
+    switch (action) {
+      case "period": togglePeriodPicker(); break;
+      case "clear-period": savePeriod(null, null); break;
+      case "shift-month": shiftCalendarMonth(Number(control.dataset.step)); break;
+      case "period-day": selectPeriodDay(control.dataset.date); break;
+      case "apply-period": savePeriod(periodDraft.start, periodDraft.end); break;
+      case "toggle-project": toggleProject(control, id); break;
+      case "create": namedTask(id, undefined, control); break;
+      case "archive-project": archiveProject(id, control); break;
+      case "move": move(group, taskId); break;
+      case "history": sendToHistory(control); break;
+      case "close": dialog.close(); break;
+      case "rename": namedTask(state.tasks[selectedId].project, selectedId, currentMenu.trigger); break;
+      case "queue":
+        removeFrom(currentMenu.group, selectedId);
+        state.queues[state.tasks[selectedId].project].unshift(selectedId);
+        update("Задача возвращена в очередь проекта");
+        break;
+      case "archive": archive(currentMenu.group, selectedId, currentMenu.trigger); break;
+      case "reorder": {
+        const list = currentMenu.group;
+        const index = state.lists[list].indexOf(selectedId);
+        reorder(list, currentMenu.id, index + Number(control.dataset.step));
+        break;
+      }
+    }
+  });
+
+  root.addEventListener("change", event => {
+    const input = event.target;
+    if (!input.matches("[data-check]")) return;
+    state.tasks[input.dataset.check].done = input.checked;
+    input.closest(".pfa-row").classList.toggle("is-done", input.checked);
+    save();
+  });
+
+  root.addEventListener("keydown", event => {
+    if (periodDraft && event.key === "Escape") {
+      event.preventDefault();
+      closePeriodPicker(true);
+      return;
+    }
+    const day = event.target.dataset.date;
+    const offset = dayOffsets[event.key];
+    if (periodDraft && day && offset) {
+      event.preventDefault();
+      const date = calendarDate(day);
+      const next = dateKey(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + offset);
+      periodDraft.month = monthStart(next);
+      renderCalendar(next);
+      return;
+    }
+    if (event.key === "Escape" && menu) {
+      event.preventDefault();
+      closeMenu(true);
+    }
+  });
+  document.addEventListener("pointerdown", event => {
+    if (!periodControl.contains(event.target)) closePeriodPicker();
+    if (menu && !menu.trigger.parentElement.contains(event.target)) closeMenu();
+  });
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    if (!modal?.onSubmit) return;
+    const message = modal.onSubmit(new FormData(form));
+    if (message) {
+      error.textContent = message;
+      error.hidden = false;
+    } else dialog.close();
+  });
+  dialog.addEventListener("close", () => {
+    const source = modal?.source;
+    modal = null;
+    if (source?.isConnected) source.focus();
+    else if (source) {
+      const { action, id, group } = source.dataset;
+      const replacement = [...root.querySelectorAll(`button[data-action="${action}"]`)].find(
+        button => button.dataset.id === id && button.dataset.group === group
+      );
+      (replacement || root.querySelector('[data-action="period"]')).focus({ preventScroll: true });
+    }
+  });
+
+  function clearDropMark() {
+    root.querySelector(".pfa-drop")?.classList.remove("pfa-drop");
+  }
+
+  root.addEventListener("dragstart", event => {
+    const handle = event.target.closest("button[data-action='order']");
+    if (!handle) return;
+    closeMenu();
+    dragged = handle.dataset;
+    event.dataTransfer.setData("text/plain", "pfa-reorder");
+    event.dataTransfer.effectAllowed = "move";
+  });
+  root.addEventListener("dragover", event => {
+    if (!dragged) return;
+    clearDropMark();
+    const target = event.target.closest(`[data-item-group="${dragged.group}"]`);
+    if (!target || target.dataset.itemId === dragged.id) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    target.classList.add("pfa-drop");
+  });
+  root.addEventListener("drop", event => {
+    if (!dragged) return;
+    const { group, id } = dragged;
+    const target = event.target.closest(`[data-item-group="${group}"]`);
+    if (!target) return;
+    event.preventDefault();
+    reorder(group, id, state.lists[group].indexOf(Number(target.dataset.itemId)));
+    clearDropMark();
+    dragged = null;
+  });
+  document.addEventListener("dragend", () => { dragged = null; clearDropMark(); });
+
+  window.addEventListener("openai:set_globals", event => {
+    const globals = event.detail?.globals;
+    if (globals && "widgetState" in globals && !dialog.open) {
+      state = initialState(globals.widgetState);
+      render();
+    }
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

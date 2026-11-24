@@ -1,9 +1,0 @@
-.pfa-current-actions .pfa-task {
-  display: flex;
-  gap: var(--size-4-2);
-}
-
-.pfa-current-actions .pfa-task-mark {
-  flex: none;
-  inline-size: 1em;
-}

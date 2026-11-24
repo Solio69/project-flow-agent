@@ -3,7 +3,7 @@
   "name": "Project Flow Agent",
   "version": "0.1.0",
   "minAppVersion": "1.8.0",
-  "description": "Просмотр текущих действий в Obsidian.",
+  "description": "Просмотр текущих задач в Obsidian.",
   "author": "Project Flow Agent",
   "isDesktopOnly": true
 }

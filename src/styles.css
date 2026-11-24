@@ -1,3 +1,3 @@
-@import "./current-actions/CurrentActions/CurrentActions.css";
-@import "./current-actions/ActionsList/ActionsList.css";
-@import "./current-actions/Task/Task.css";
+@import "./current-tasks/CurrentTasks/CurrentTasks.css";
+@import "./current-tasks/TasksList/TasksList.css";
+@import "./current-tasks/Task/Task.css";
