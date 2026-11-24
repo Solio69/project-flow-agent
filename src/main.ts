@@ -1,20 +1,21 @@
 import { Notice, Plugin } from "obsidian";
-import {
-  CURRENT_ACTIONS_TITLE,
-  CURRENT_ACTIONS_VIEW,
-  CurrentActionsView,
-} from "./current-actions/current-actions-view";
+import { CurrentActionsView } from "./current-actions/current-actions-view";
+import { CURRENT_ACTIONS_TITLE, CURRENT_ACTIONS_VIEW } from "./current-actions/current-actions.constants";
+import { CURRENT_ACTIONS_ICON, ERROR_COPY } from "./main.constants";
+import { WORKSPACE_TAB } from "./obsidian/constants";
+
+const { openViewLog, openViewNotice } = ERROR_COPY;
 
 export default class ProjectFlowAgentPlugin extends Plugin {
   private opening?: Promise<void>;
 
   onload(): void {
     this.registerView(CURRENT_ACTIONS_VIEW, (leaf) => new CurrentActionsView(leaf));
-    this.addRibbonIcon("list-checks", CURRENT_ACTIONS_TITLE, () => {
+    this.addRibbonIcon(CURRENT_ACTIONS_ICON, CURRENT_ACTIONS_TITLE, () => {
       this.opening ??= this.openCurrentActions()
         .catch((error: unknown) => {
-          console.error("Project Flow Agent: открытие вкладки", error);
-          new Notice("Не удалось открыть «Текущие действия».");
+          console.error(openViewLog, error);
+          new Notice(openViewNotice);
         })
         .finally(() => {
           this.opening = undefined;
@@ -27,7 +28,7 @@ export default class ProjectFlowAgentPlugin extends Plugin {
     const { workspace } = this.app;
     let [leaf] = workspace.getLeavesOfType(CURRENT_ACTIONS_VIEW);
     if (!leaf) {
-      leaf = workspace.getLeaf("tab");
+      leaf = workspace.getLeaf(WORKSPACE_TAB);
       try {
         await leaf.setViewState({ type: CURRENT_ACTIONS_VIEW, active: true });
       } catch (error) {
