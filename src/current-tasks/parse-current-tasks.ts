@@ -22,40 +22,15 @@ import {
   UNCHECKED_MARK,
   WIKI_LINK_DELIMITERS,
 } from "./parse-current-tasks.constants";
+import type {
+  ActionDiagnostic, CurrentTask, CurrentTaskGroup, CurrentTasksDocument, TaskPeriod, TasksFormat,
+} from "./types";
 
 const dateSchema = iso.date();
 const {
   unclosedFrontmatter, duplicatePeriodField, invalidPeriodDate, reversedPeriod,
   missingLegacyDates, invalidTask, ambiguousTaskLink, expectedTaskLink, invalidProjectHeading,
 } = DIAGNOSTIC_COPY;
-
-export interface ActionDiagnostic {
-  line?: number;
-  message: string;
-}
-
-export interface CurrentTask {
-  line: number;
-  title: string;
-  completed: boolean;
-  link?: string;
-}
-
-export interface CurrentTaskGroup {
-  kind: (typeof TASK_GROUP_KIND)[keyof typeof TASK_GROUP_KIND];
-  line: number;
-  nextHeadingLine?: number;
-  title: string;
-  link?: string;
-  tasks: CurrentTask[];
-}
-
-export interface CurrentTasksDocument {
-  format: (typeof TASKS_FORMAT)[keyof typeof TASKS_FORMAT];
-  period?: { start: string; end: string };
-  groups: CurrentTaskGroup[];
-  diagnostics: ActionDiagnostic[];
-}
 
 type PeriodKey = (typeof PERIOD_FIELD)[keyof typeof PERIOD_FIELD];
 type SourceLine = { line: number; text: string };
@@ -124,7 +99,7 @@ function validatePeriod(
   start: SourceLine | undefined,
   end: SourceLine | undefined,
   diagnostics: ActionDiagnostic[],
-): CurrentTasksDocument["period"] {
+): TaskPeriod | undefined {
   function validated(field: SourceLine | undefined, label: string) {
     const result = dateSchema.safeParse(field?.text);
     if (result.success) return result.data;
@@ -174,7 +149,7 @@ function wikiLink(contents: string) {
 
 function readTask(
   { line, text: sourceText }: SourceLine,
-  format: CurrentTasksDocument["format"],
+  format: TasksFormat,
   diagnostics: ActionDiagnostic[],
 ): CurrentTask | undefined {
   const row = TASK_PATTERN.exec(sourceText.trimEnd());

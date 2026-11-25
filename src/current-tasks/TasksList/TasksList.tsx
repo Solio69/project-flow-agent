@@ -1,15 +1,16 @@
+import { useRef } from "react";
 import type { OpenNote } from "../NoteLink";
 import { TaskPanel } from "../TaskPanel";
 import { TasksToolbar } from "../TasksToolbar";
+import { LIST_KEY_SEPARATOR } from "../current-tasks.constants";
 import type { LinkedTaskGroup, TasksSnapshot } from "../obsidian-current-tasks";
-import type { ActionDiagnostic } from "../parse-current-tasks";
 import type { SetCompleted } from "../task-completion";
 import { isTodayGroup } from "../task-group";
+import type { ActionDiagnostic } from "../types";
 import {
   COPY,
   DIAGNOSTIC_LABEL_SUFFIX,
   EMPTY_TODAY,
-  LIST_KEY_SEPARATOR,
   SPACE,
 } from "./constants";
 
@@ -30,14 +31,19 @@ function renderDiagnostic({ line, message }: ActionDiagnostic) {
 
 export function TasksList({
   document,
+  showCompleted,
+  onShowCompletedChange,
   onOpenNote,
   onSetCompleted,
 }: {
   document: TasksSnapshot;
+  showCompleted: boolean;
+  onShowCompletedChange: (visible: boolean) => void;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
 }) {
   const { period, groups, diagnostics } = document;
+  const completedToggleRef = useRef<HTMLInputElement>(null);
   const diagnosticCount = diagnostics.length;
   const hasDiagnostics = diagnosticCount > 0;
   const todayPanels: Panel[] = [];
@@ -50,6 +56,10 @@ export function TasksList({
   if (!todayPanels.length)
     todayPanels.push({ group: EMPTY_TODAY, today: true });
   const panels = [...todayPanels, ...projectPanels];
+
+  function focusCompletedToggle() {
+    completedToggleRef.current?.focus();
+  }
 
   function renderDiagnostics() {
     return (
@@ -75,6 +85,8 @@ export function TasksList({
           key={key}
           group={group}
           today={today}
+          showCompleted={showCompleted}
+          focusCompletedToggle={focusCompletedToggle}
           onOpenNote={onOpenNote}
           onSetCompleted={onSetCompleted}
         />
@@ -84,7 +96,12 @@ export function TasksList({
 
   return (
     <>
-      <TasksToolbar period={period} />
+      <TasksToolbar
+        period={period}
+        showCompleted={showCompleted}
+        onShowCompletedChange={onShowCompletedChange}
+        completedToggleRef={completedToggleRef}
+      />
       {hasDiagnostics && renderDiagnostics()}
       <div className="pfa-task-panels">{renderPanels()}</div>
     </>

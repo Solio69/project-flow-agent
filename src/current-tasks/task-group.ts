@@ -1,6 +1,6 @@
 import { TASK_GROUP_KIND } from "./current-tasks.constants";
-import type { CurrentTaskGroup } from "./parse-current-tasks";
+import type { TaskGroupKind } from "./types";
 
-export function isTodayGroup({ kind }: Pick<CurrentTaskGroup, "kind">) {
+export function isTodayGroup({ kind }: { kind: TaskGroupKind }) {
   return kind === TASK_GROUP_KIND.today;
 }

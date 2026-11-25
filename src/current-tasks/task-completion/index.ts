@@ -1,6 +1,7 @@
 export { COPY as COMPLETION_COPY } from "./constants";
 export {
   isCompletionTarget,
+  partitionTasksByCompletion,
   TaskCompletionError,
   updateCompletionMark,
   type CompletionTarget,

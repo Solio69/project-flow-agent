@@ -2,6 +2,7 @@ export const COPY = {
   noPeriod: "Период не задан",
   periodLabel: "Период:",
   historyLabel: "Перенести выполненные в историю",
+  showCompletedLabel: "Показывать выполненные",
 };
 
 export const ICONS = { calendar: "calendar-days", history: "archive" } as const;

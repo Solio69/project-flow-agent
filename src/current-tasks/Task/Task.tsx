@@ -11,12 +11,13 @@ import { COPY, ICONS } from "./constants";
 const { checkbox, moveToToday, returnToProject, actions } = COPY;
 const { check, grip, up, down, menu } = ICONS;
 
-export function Task({ task, today, showGrip, onOpenNote, onSetCompleted }: {
+export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onTaskMarked }: {
   task: LinkedTask;
   today: boolean;
   showGrip: boolean;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
+  onTaskMarked: (control: HTMLInputElement) => void;
 }) {
   const { completed, project, projectPath, title } = task;
   const appearance = projectAppearance(projectPath);
@@ -28,6 +29,7 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted }: {
   function changeCompletion({ currentTarget }: ChangeEvent<HTMLInputElement>) {
     if (!editableTask || !onSetCompleted) return;
     const { checked } = currentTarget;
+    if (checked) onTaskMarked(currentTarget);
     void onSetCompleted(editableTask, checked);
   }
 

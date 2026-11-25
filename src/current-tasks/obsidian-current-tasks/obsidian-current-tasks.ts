@@ -10,7 +10,8 @@ import { object, regex, string } from "zod/mini";
 import { VAULT_PATH_SEPARATOR, WORKSPACE_TAB } from "../../obsidian/constants";
 import { resolveLink } from "../../obsidian/resolve-link";
 import { TASKS_FORMAT } from "../current-tasks.constants";
-import { parseCurrentTasks, type CurrentTask } from "../parse-current-tasks";
+import { parseCurrentTasks } from "../parse-current-tasks";
+import type { CurrentTask } from "../types";
 import {
   COMPLETION_COPY,
   TaskCompletionError,

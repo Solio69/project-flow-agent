@@ -13,13 +13,15 @@ import { test } from "node:test";
 import { build } from "esbuild";
 import { createCurrentTasksFixture } from "./fixtures/current-tasks.mjs";
 import {
-  aliasedBlogTasks, ambiguousCompletion, completionBeforeBrokenHeading, completionCases,
+  aliasedBlogTasks, ambiguousCompletion, completedBeforeAnnotation, completionAcrossAnnotation, completionAlongsideAnnotation,
+  completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
   obsoleteTasks, propertyTasks,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
   aliasedBlogExpected, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown,
-  projectLinkCase, sourceNotePaths, taskNoteMarkdown, tasksDesign, watchFixture,
+  projectLinkCase, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
+  visibleTaskOrderBeforeWrite, watchFixture,
 } from "./fixtures/scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -197,6 +199,70 @@ async function openTasksFixture(t, markdown) {
   t.after(() => fixture.activeLeaf.view.onClose());
   return fixture;
 }
+
+test("отметка записывает порядок выполненных, снятие возвращает задачу в конец активных", async (t) => {
+  const [first, second] = taskCompletionOrder;
+  for (const [initial, firstChecked, secondChecked, secondRestored] of completionOrderCases) {
+    const fixture = await openTasksFixture(t, initial);
+    const { mounts, writes, leaves, ribbonClick } = fixture;
+    const setCompletion = async (title, checked) => {
+      const { onSetCompleted, state: { document } } = mounts.at(-1).element.props;
+      const task = document.groups.flatMap(({ tasks }) => tasks).find((row) => row.title === title);
+      assert.ok(task, title);
+      await onSetCompleted(task, checked);
+    };
+
+    await setCompletion(first, true);
+    await setCompletion(second, true);
+    await setCompletion(second, true);
+    assert.deepEqual(writes, [firstChecked, secondChecked]);
+
+    await fixture.activeLeaf.view.onClose();
+    leaves.pop();
+    await ribbonClick();
+    await setCompletion(second, false);
+    assert.deepEqual(writes, [firstChecked, secondChecked, secondRestored]);
+  }
+});
+
+test("выполненные видны по умолчанию после активных даже в смешанном списке", async (t) => {
+  const [[initial]] = completionOrderCases;
+  const { mounts, writes } = await openTasksFixture(t, initial);
+  const { markup } = mounts.at(-1);
+  assert.match(markup, tasksDesign.showCompleted);
+  const labels = [...markup.matchAll(taskCheckboxLabel)].map(([, title]) => title);
+  assert.deepEqual(labels, visibleTaskOrderBeforeWrite);
+  assert.deepEqual(writes, []);
+});
+
+test("галочка сохраняет текст между задачами и блокирует перестановку через него", async (t) => {
+  const { mounts, notices, writes } = await openTasksFixture(t, completionAcrossAnnotation);
+  await completeFirstTask(mounts);
+  assert.deepEqual(writes, []);
+  assert.match(notices.at(-1), completionFeedback.interleaved);
+
+  const { onSetCompleted, state: { document } } = mounts.at(-1).element.props;
+  const [group] = document.groups;
+  await onSetCompleted(group.tasks.at(-1), true);
+  assert.deepEqual(writes, [completionAlongsideAnnotation]);
+});
+
+test("одна активная и одна выполненная задача не показывают ручки перетаскивания", async (t) => {
+  const { mounts } = await openTasksFixture(t, completionWithOneActiveTask);
+  assert.doesNotMatch(mounts.at(-1).markup, taskGripWithIcon);
+});
+
+test("снятие галочки не меняет соседей комментария при перестановке по одну сторону", async (t) => {
+  const { mounts, notices, writes } = await openTasksFixture(t, completedBeforeAnnotation);
+  const { onSetCompleted, state: { document } } = mounts.at(-1).element.props;
+  const [group] = document.groups;
+  const [, task] = group.tasks;
+
+  await onSetCompleted(task, false);
+
+  assert.deepEqual(writes, []);
+  assert.match(notices.at(-1), completionFeedback.interleaved);
+});
 
 test("галочка отвергает ID, продублированный после загрузки списка", async (t) => {
   const { controls, mounts, notices, writes } = await openTasksFixture(t, completionWithTwoTasks);

@@ -5,7 +5,7 @@
   margin-block: 10px 16px;
 }
 
-.pfa-current-tasks .pfa-tasks-toolbar :is(.pfa-period, .pfa-control) {
+.pfa-current-tasks .pfa-tasks-toolbar :is(.pfa-period, .pfa-control, .pfa-completed-toggle) {
   display: inline-flex;
   max-inline-size: 100%;
   min-block-size: var(--pfa-circle-size);
@@ -18,6 +18,70 @@
   color: var(--pfa-ui-accent);
   font-size: 13px;
   font-weight: 600;
+}
+
+.pfa-current-tasks .pfa-completed-toggle {
+  position: relative;
+  min-inline-size: 0;
+  cursor: pointer;
+}
+
+.pfa-current-tasks .pfa-completed-toggle input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.pfa-current-tasks .pfa-completed-toggle:has(input:focus-visible) {
+  outline: 2px solid var(--pfa-focus);
+  outline-offset: 2px;
+}
+
+.pfa-current-tasks .pfa-switch-track {
+  position: relative;
+  flex: none;
+  inline-size: 30px;
+  block-size: 17px;
+  border: 1px solid var(--pfa-ui-accent);
+  border-radius: 10px;
+}
+
+.pfa-current-tasks .pfa-switch-track::after {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 11px;
+  block-size: 11px;
+  border-radius: 50%;
+  background: var(--pfa-ui-accent);
+  content: "";
+}
+
+.pfa-current-tasks .pfa-completed-toggle input:checked + .pfa-switch-track {
+  background: var(--pfa-ui-accent);
+}
+
+.pfa-current-tasks .pfa-completed-toggle input:checked + .pfa-switch-track::after {
+  inset-inline-start: 15px;
+  background: var(--pfa-task-surface);
+}
+
+@media (forced-colors: active) {
+  .pfa-current-tasks .pfa-completed-toggle input {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    opacity: 1;
+    appearance: auto;
+  }
+
+  .pfa-current-tasks .pfa-switch-track {
+    display: none;
+  }
 }
 
 .pfa-current-tasks .pfa-period-label {

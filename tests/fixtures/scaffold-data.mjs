@@ -19,6 +19,7 @@ export const completionFeedback = {
   checked: /<input(?=[^>]*type="checkbox")(?=[^>]*checked="")(?=[^>]*aria-label="Выполнено: Черновик")/,
   disabled: /<input(?=[^>]*type="checkbox")(?=[^>]*disabled="")/,
   ambiguous: /Неоднозначная запись/,
+  interleaved: /текст между задачами/i,
   conflict: /заметка изменилась/i,
   duplicate: /повторяется/i,
   taskChanged: /Файл или ID задачи изменился/i,
@@ -36,7 +37,13 @@ export const tasksDesign = {
   projectPanel: 'data-section="project"',
   disclosure: /aria-expanded="true"/,
   history: /<button(?=[^>]*disabled="")(?=[^>]*aria-label="Перенести выполненные в историю")[^>]*>/,
+  showCompleted: /<input(?=[^>]*role="switch")(?=[^>]*checked="")[^>]*>.*?Показывать выполненные/,
 };
+
+export const taskCompletionOrder = ["Черновик", "Вторая задача"];
+export const visibleTaskOrderBeforeWrite = ["Черновик", "Вторая задача", "Другая активная задача", "Готовая задача"];
+export const taskCheckboxLabel = /<input\s[^>]*aria-label="Выполнено: ([^"]+)"/g;
+export const taskGripWithIcon = /class="pfa-task-grip"[^>]*><span/g;
 
 export const currentTasksExpected = {
   viewTitle: "Текущие задачи",

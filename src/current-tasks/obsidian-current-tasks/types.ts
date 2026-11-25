@@ -1,4 +1,4 @@
-import type { CurrentTask, CurrentTaskGroup, CurrentTasksDocument } from "../parse-current-tasks";
+import type { CurrentTask, CurrentTaskGroup, CurrentTasksDocument } from "../types";
 
 export type LinkedTask = CurrentTask & {
   notePath?: string;
@@ -7,13 +7,11 @@ export type LinkedTask = CurrentTask & {
   projectPath?: string;
 };
 
-export type LinkedTaskGroup = Omit<CurrentTaskGroup, "tasks"> & {
+export interface LinkedTaskGroup extends CurrentTaskGroup<LinkedTask> {
   notePath?: string;
-  tasks: LinkedTask[];
-};
+}
 
-export type TasksSnapshot = Omit<CurrentTasksDocument, "groups"> & {
+export interface TasksSnapshot extends CurrentTasksDocument<LinkedTaskGroup> {
   sourcePath: string;
   sourceMarkdown: string;
-  groups: LinkedTaskGroup[];
-};
+}

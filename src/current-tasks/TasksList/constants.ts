@@ -4,7 +4,6 @@ import type { LinkedTaskGroup } from "../obsidian-current-tasks";
 
 export const SPACE = " ";
 export const DIAGNOSTIC_LABEL_SUFFIX = "." + SPACE;
-export const LIST_KEY_SEPARATOR = ":";
 
 export const COPY = {
   diagnosticsTitle: "Замечания к заметке",

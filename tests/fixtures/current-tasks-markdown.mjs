@@ -47,6 +47,24 @@ export const completionBeforeBrokenHeading = {
   checked: completionList + completionRow("x") + brokenNextHeading + afterCompletion,
 };
 export const completionWithTwoTasks = completionList + completionRow(" ") + "\r\n- [ ] [[Вторая задача]]";
+const secondCompletionRow = (mark) => `- [${mark}] [[Вторая задача]]`;
+const previouslyCompleted = "- [x] [[Готовая задача]]";
+const remainingActive = "- [ ] [[Другая активная задача]]";
+const taskAnnotation = "\r\n<!-- Пояснение к предыдущей задаче -->\r\n";
+export const completionAcrossAnnotation = completionList + completionRow(" ") + taskAnnotation + secondCompletionRow(" ");
+export const completionAlongsideAnnotation = completionList + completionRow(" ") + taskAnnotation + secondCompletionRow("x");
+export const completedBeforeAnnotation = completionList + completionRow("x") + "\r\n"
+  + secondCompletionRow("x") + taskAnnotation + previouslyCompleted;
+export const completionWithOneActiveTask = completionList + completionRow(" ") + "\r\n" + previouslyCompleted;
+const completionOrderStates = [
+  [completionRow(" "), previouslyCompleted, secondCompletionRow(" "), remainingActive],
+  [secondCompletionRow(" "), remainingActive, completionRow("x"), previouslyCompleted],
+  [remainingActive, secondCompletionRow("x"), completionRow("x"), previouslyCompleted],
+  [remainingActive, secondCompletionRow(" "), completionRow("x"), previouslyCompleted],
+];
+export const completionOrderCases = [todayHeading, projectHeading].map((heading) =>
+  completionOrderStates.map((rows) => completionHeader + heading + "\r\n" + rows.join("\r\n") + afterCompletion),
+);
 export const completionWithShortLink = completionList + "- [ ] [[Черновик]]";
 export const aliasedBlogTasks = completionHeader + [
   todayHeading,

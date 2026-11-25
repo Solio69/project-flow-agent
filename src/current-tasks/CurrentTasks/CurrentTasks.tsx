@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ALERT_ROLE } from "../../constants/html-attributes";
 import { TasksList } from "../TasksList";
 import type { OpenNote } from "../NoteLink";
@@ -11,10 +12,20 @@ export function CurrentTasks({ title, state, onOpenNote, onSetCompleted }: {
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
 }) {
+  const [showCompleted, setShowCompleted] = useState(true);
+
   function renderContent() {
     if (isKindReady(state)) {
       const { document } = state;
-      return <TasksList document={document} onOpenNote={onOpenNote} onSetCompleted={onSetCompleted} />;
+      return (
+        <TasksList
+          document={document}
+          showCompleted={showCompleted}
+          onShowCompletedChange={setShowCompleted}
+          onOpenNote={onOpenNote}
+          onSetCompleted={onSetCompleted}
+        />
+      );
     }
 
     const { role, message } = isKindLoading(state)
