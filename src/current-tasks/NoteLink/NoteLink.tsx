@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
-import { LINK_FRAGMENT_PREFIX, MIDDLE_MOUSE_BUTTON } from "./constants";
+import { LINK_FRAGMENT_PREFIX } from "../../obsidian/constants";
+import { MIDDLE_MOUSE_BUTTON } from "./constants";
 
 export type OpenNote = (link: string, forceNewTab?: boolean) => Promise<void>;
 

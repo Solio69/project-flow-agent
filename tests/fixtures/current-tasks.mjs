@@ -5,13 +5,21 @@ import { runInNewContext } from "node:vm";
 import { build } from "esbuild";
 import { renderToStaticMarkup } from "react-dom/server";
 import { legacyTasks } from "./current-tasks-markdown.mjs";
-import { currentTasksExpected, projectLinkCase, sourceNotePaths, taskNoteMarkdown } from "./scaffold-data.mjs";
+import {
+  completionReviewNotes, currentTasksExpected, differentTaskNoteMarkdown,
+  projectLinkCase, sourceNotePaths, taskNoteMarkdown,
+} from "./scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
 const project = fileURLToPath(new URL("../../", import.meta.url));
 const { viewTitle } = currentTasksExpected;
 const { note: { title: projectTitle, link: projectLink, notePath: projectNotePath } } = projectLinkCase;
 const projectLinks = [projectTitle, projectLink];
+const { second, replacement, blog, blogTask } = completionReviewNotes;
+
+function taskFile(path) {
+  return { path, stat: { mtime: 0, size: taskNoteMarkdown.length } };
+}
 
 export async function createCurrentTasksFixture() {
   const { outputFiles: [bundle] } = await build({
@@ -30,9 +38,14 @@ export async function createCurrentTasksFixture() {
   const notices = [];
   const listeners = new Map();
   const openedNotes = [];
+  const writes = [];
   const source = { path: sourceNotePaths.legacy };
   const renamedSource = { path: sourceNotePaths.renamed };
-  const note = { path: "Мастерская/project inbox/Черновик.md" };
+  const note = taskFile("Мастерская/project inbox/Черновик.md");
+  const secondNote = taskFile(second.path);
+  const replacementNote = taskFile(replacement.path);
+  const blogTaskNote = taskFile(blogTask.path);
+  const blogNote = { path: blog.path };
   const projectNote = { path: projectNotePath };
   const controls = {
     markdown: legacyTasks,
@@ -41,7 +54,21 @@ export async function createCurrentTasksFixture() {
     nextRead: undefined,
     failNextOpen: false,
     failNextNoteOpen: false,
+    taskMarkdown: taskNoteMarkdown,
+    secondTaskMarkdown: differentTaskNoteMarkdown,
+    shortLinkDestination: note,
+    beforeProcess: undefined,
   };
+  const noteReaders = new Map([
+    [note, () => controls.taskMarkdown],
+    [secondNote, () => controls.secondTaskMarkdown],
+    [replacementNote, () => differentTaskNoteMarkdown],
+    [blogTaskNote, () => taskNoteMarkdown],
+  ]);
+  const relatedNotes = new Map([
+    projectNote, blogNote, ...noteReaders.keys(),
+  ].map((file) => [file.path, file]));
+  const readTaskNote = (file) => noteReaders.get(file)?.();
   let activeLeaf;
 
   class Plugin {
@@ -127,14 +154,26 @@ export async function createCurrentTasksFixture() {
     getFileByPath(path) {
       if (controls.renamedSourceAvailable && renamedSource.path === path) return renamedSource;
       if (controls.sourceAvailable && source.path === path) return source;
-      if (projectNote.path === path) return projectNote;
-      return note.path === path ? note : null;
+      return relatedNotes.get(path) ?? null;
     },
     async cachedRead(file) {
-      if (file === note) return taskNoteMarkdown;
+      const taskText = readTaskNote(file);
+      if (taskText !== undefined) return taskText;
       const pending = controls.nextRead;
       controls.nextRead = undefined;
       return pending ?? controls.markdown;
+    },
+    async read(file) {
+      return readTaskNote(file) ?? controls.markdown;
+    },
+    async process(file, update) {
+      assert.ok(file === source || file === renamedSource);
+      await controls.beforeProcess?.();
+      const previous = controls.markdown;
+      const next = update(previous);
+      if (next !== previous) writes.push(next);
+      controls.markdown = next;
+      return next;
     },
     on(event, callback) {
       const ref = { event, callback };
@@ -191,7 +230,11 @@ export async function createCurrentTasksFixture() {
     getFirstLinkpathDest(link, from) {
       assert.ok([source.path, renamedSource.path].includes(from));
       if (projectLinks.includes(link)) return projectNote;
-      return ["Черновик", "Мастерская/project inbox/Черновик"].includes(link) ? note : null;
+      if (link === second.link) return secondNote;
+      if (link === blog.link) return blogNote;
+      if (link === blogTask.link) return blogTaskNote;
+      if (link === "Черновик") return controls.shortLinkDestination;
+      return link === "Мастерская/project inbox/Черновик" ? note : null;
     },
   };
   const app = { workspace, vault, metadataCache };
@@ -206,7 +249,9 @@ export async function createCurrentTasksFixture() {
     notices,
     listeners,
     openedNotes,
+    writes,
     note,
+    replacementNote,
     projectNote,
     renamedSource,
     workspace,

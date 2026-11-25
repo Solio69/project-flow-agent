@@ -1,4 +1,18 @@
-.pfa-current-tasks .pfa-task-list {
-  padding-inline-start: 0;
-  list-style: none;
+.pfa-current-tasks .pfa-task-panels {
+  display: grid;
+  min-inline-size: 0;
+  gap: 12px;
+}
+
+.pfa-current-tasks .pfa-diagnostics {
+  margin-block-end: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--pfa-border);
+  border-radius: 10px;
+  background: var(--pfa-task-surface);
+  color: var(--pfa-muted);
+}
+
+.pfa-current-tasks .pfa-diagnostics summary {
+  cursor: pointer;
 }

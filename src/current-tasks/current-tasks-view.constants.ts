@@ -6,4 +6,6 @@ export const ERROR_COPY = {
   noteOpenFailed: "Не удалось открыть связанную заметку.",
   readLog: "Project Flow Agent: чтение текущих задач",
   openLog: "Project Flow Agent: открытие связанной заметки",
+  completionLog: "Project Flow Agent: запись отметки выполнения",
+  completionFailed: "Не удалось изменить отметку выполнения. Список обновится.",
 };

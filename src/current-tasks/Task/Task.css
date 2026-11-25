@@ -1,9 +1,122 @@
+.pfa-current-tasks .pfa-task-list {
+  margin: 0;
+  padding: 0;
+  border-radius: 0 0 13px 13px;
+  list-style: none;
+}
+
 .pfa-current-tasks .pfa-task {
-  display: flex;
-  gap: var(--size-4-2);
+  display: grid;
+  grid-template-columns: 18px 18px minmax(0, 1fr) auto;
+  gap: 8px;
+  min-block-size: 44px;
+  padding: 4px var(--pfa-panel-inset);
+  align-items: center;
+}
+
+.pfa-current-tasks .pfa-task + .pfa-task {
+  border-block-start: 1px solid var(--pfa-border);
+}
+
+.pfa-current-tasks .pfa-task:last-child {
+  border-radius: 0 0 13px 13px;
+}
+
+.pfa-current-tasks .pfa-task:is(:hover, :focus-within) {
+  background: color-mix(in srgb, var(--pfa-panel-color) 16%, var(--pfa-task-surface));
+}
+
+.pfa-current-tasks .pfa-task-grip {
+  display: grid;
+  place-items: center;
+  color: var(--pfa-caption);
+  opacity: 0.6;
 }
 
 .pfa-current-tasks .pfa-task-mark {
-  flex: none;
-  inline-size: 1em;
+  position: relative;
+  display: grid;
+  inline-size: 18px;
+  block-size: 18px;
+  place-items: center;
+  border: 1px solid var(--pfa-checkbox-border);
+  border-radius: 50%;
+}
+
+.pfa-current-tasks .pfa-task-mark input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+}
+
+.pfa-current-tasks .pfa-task-mark input:not(:disabled) {
+  cursor: pointer;
+}
+
+.pfa-current-tasks .pfa-task-mark:has(input:focus-visible) {
+  outline: 2px solid var(--pfa-focus);
+  outline-offset: 2px;
+}
+
+.pfa-current-tasks .pfa-task[data-completed="true"] .pfa-task-mark {
+  border-color: var(--pfa-ui-accent);
+  background: var(--pfa-ui-accent);
+  color: var(--pfa-on-accent);
+}
+
+.pfa-current-tasks .pfa-task-mark .pfa-icon {
+  inline-size: 13px;
+  block-size: 13px;
+  pointer-events: none;
+}
+
+.pfa-current-tasks .pfa-task-label {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.pfa-current-tasks .pfa-task-label .pfa-project-emoji {
+  margin-inline-end: 6px;
+}
+
+.pfa-current-tasks .pfa-task-project {
+  font-weight: 600;
+}
+
+.pfa-current-tasks .pfa-task[data-completed="true"] .pfa-task-title {
+  color: var(--pfa-muted);
+  text-decoration: line-through;
+}
+
+@container (max-width: 360px) {
+  .pfa-current-tasks .pfa-task {
+    grid-template-columns: 14px 18px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .pfa-current-tasks .pfa-task-grip .pfa-icon { inline-size: 14px; }
+}
+
+@container (max-width: 250px) {
+  .pfa-current-tasks .pfa-task {
+    grid-template-columns: 14px 18px minmax(0, 1fr);
+  }
+
+  .pfa-current-tasks .pfa-task-actions { grid-column: 3; }
+}
+
+@media (forced-colors: active) {
+  .pfa-current-tasks .pfa-task-mark {
+    border-color: CanvasText;
+  }
+
+  .pfa-current-tasks .pfa-task[data-completed="true"] .pfa-task-mark {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
 }

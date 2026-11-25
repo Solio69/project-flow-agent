@@ -1,6 +1,6 @@
 import { CURRENT_TASKS_FILENAME } from "../current-tasks.constants";
 
-// Старое имя общей заметки поддерживается до переименования во фреймворке.
+//TODO: Старое имя общей заметки поддерживается до переименования во фреймворке.
 const LEGACY_SOURCE_FILENAME = "Текущие действия.md";
 const VAULT_PROJECTS_FOLDER = "Проекты/";
 export const SOURCE_PATHS = [CURRENT_TASKS_FILENAME, LEGACY_SOURCE_FILENAME]

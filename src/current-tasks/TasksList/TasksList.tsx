@@ -1,56 +1,92 @@
-import { NoteLink, type OpenNote } from "../NoteLink";
-import { Task } from "../Task";
-import type { TasksSnapshot } from "../obsidian-current-tasks";
+import type { OpenNote } from "../NoteLink";
+import { TaskPanel } from "../TaskPanel";
+import { TasksToolbar } from "../TasksToolbar";
+import type { LinkedTaskGroup, TasksSnapshot } from "../obsidian-current-tasks";
 import type { ActionDiagnostic } from "../parse-current-tasks";
-import { COPY } from "./constants";
+import type { SetCompleted } from "../task-completion";
+import { isTodayGroup } from "../task-group";
+import {
+  COPY,
+  DIAGNOSTIC_LABEL_SUFFIX,
+  EMPTY_TODAY,
+  LIST_KEY_SEPARATOR,
+  SPACE,
+} from "./constants";
 
-const { periodLabel, diagnosticsTitle, lineLabel, emptyGroups, emptyProject } = COPY;
+const { diagnosticsTitle, lineLabel } = COPY;
 
-function displayDate(iso: string): string {
-  return iso.split("-").reverse().join(".");
-}
+type Panel = { group: LinkedTaskGroup; today: boolean };
 
 function renderDiagnostic({ line, message }: ActionDiagnostic) {
-  const label = line && lineLabel + " " + line + ". ";
-  return <li key={line + ":" + message}>{label}{message}</li>;
+  const label = line && `${lineLabel}${SPACE}${line}${DIAGNOSTIC_LABEL_SUFFIX}`;
+  const key = `${line}${LIST_KEY_SEPARATOR}${message}`;
+  return (
+    <li key={key}>
+      {label}
+      {message}
+    </li>
+  );
 }
 
-export function TasksList({ document, onOpenNote }: { document: TasksSnapshot; onOpenNote: OpenNote }) {
+export function TasksList({
+  document,
+  onOpenNote,
+  onSetCompleted,
+}: {
+  document: TasksSnapshot;
+  onOpenNote: OpenNote;
+  onSetCompleted?: SetCompleted;
+}) {
   const { period, groups, diagnostics } = document;
-  const hasDiagnostics = diagnostics.length > 0;
-  const hasGroups = groups.length > 0;
+  const diagnosticCount = diagnostics.length;
+  const hasDiagnostics = diagnosticCount > 0;
+  const todayPanels: Panel[] = [];
+  const projectPanels: Panel[] = [];
+  for (const group of groups) {
+    const today = isTodayGroup(group);
+    const destination = today ? todayPanels : projectPanels;
+    destination.push({ group, today });
+  }
+  if (!todayPanels.length)
+    todayPanels.push({ group: EMPTY_TODAY, today: true });
+  const panels = [...todayPanels, ...projectPanels];
 
   function renderDiagnostics() {
     return (
       <details className="pfa-diagnostics">
-        <summary>{diagnosticsTitle} ({diagnostics.length})</summary>
+        <summary>
+          {diagnosticsTitle} ({diagnosticCount})
+        </summary>
         <ul>{diagnostics.map(renderDiagnostic)}</ul>
       </details>
     );
   }
 
-  function renderProjectGroup(group: TasksSnapshot["groups"][number]) {
-    const { line, tasks } = group;
-    const taskList = tasks.length ? (
-      <ul className="pfa-task-list">
-        {tasks.map((task) => <Task key={task.line} task={task} onOpenNote={onOpenNote} />)}
-      </ul>
-    ) : <p>{emptyProject}</p>;
-
-    return (
-      <section key={line}>
-        <h3><NoteLink note={group} onOpenNote={onOpenNote} /></h3>
-        {taskList}
-      </section>
-    );
+  function renderPanels() {
+    const occurrences = new Map<string, number>();
+    return panels.map(({ group, today }) => {
+      const { kind, link, title } = group;
+      const identity = `${kind}${LIST_KEY_SEPARATOR}${link ?? title}`;
+      const occurrence = occurrences.get(identity) ?? 0;
+      occurrences.set(identity, occurrence + 1);
+      const key = `${identity}${LIST_KEY_SEPARATOR}${occurrence}`;
+      return (
+        <TaskPanel
+          key={key}
+          group={group}
+          today={today}
+          onOpenNote={onOpenNote}
+          onSetCompleted={onSetCompleted}
+        />
+      );
+    });
   }
 
   return (
     <>
-      {period && <p>{periodLabel} {displayDate(period.start)} — {displayDate(period.end)}</p>}
+      <TasksToolbar period={period} />
       {hasDiagnostics && renderDiagnostics()}
-      {!hasGroups && <p>{emptyGroups}</p>}
-      {groups.map(renderProjectGroup)}
+      <div className="pfa-task-panels">{renderPanels()}</div>
     </>
   );
 }

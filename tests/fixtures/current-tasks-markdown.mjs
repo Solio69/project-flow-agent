@@ -19,3 +19,37 @@ export const propertyTasks = [
 ].join("\n");
 
 export const obsoleteTasks = [legacyPeriodHeading, "## [[Старое чтение]]"].join("\n");
+
+const completionHeader = "\uFEFF---\r\nperiod_start: 2026-11-23\r\nperiod_end: 2026-11-29\r\nnote: 'Текст [ ]'\r\n---\r\n";
+const projectHeading = "## [[Мастерская]]";
+const todayHeading = "## Сегодня";
+const completionRow = (mark) => `-\t[${mark}]  [[Мастерская/project inbox/Черновик|Черновик]]  `;
+const afterCompletion = "\n\n# Другая часть\n- [ ] Другая запись\n";
+
+export const completionCases = [
+  { unchecked: completionHeader + todayHeading + "\r\n" + completionRow(" ") + "\r\n" + projectHeading + afterCompletion,
+    checked: completionHeader + todayHeading + "\r\n" + completionRow("x") + "\r\n" + projectHeading + afterCompletion },
+  { unchecked: completionHeader + projectHeading + "\r\n" + completionRow(" ") + afterCompletion,
+    checked: completionHeader + projectHeading + "\r\n" + completionRow("x") + afterCompletion },
+];
+
+export const ambiguousCompletion = completionHeader + projectHeading + "\r\n" + completionRow(" ")
+  + "\r\n- [ ] Ссылка [[A]] и [[B]]" + afterCompletion;
+export const duplicatedCompletion = completionHeader + todayHeading + "\r\n" + completionRow(" ") + "\r\n"
+  + projectHeading + "\r\n" + completionRow(" ") + afterCompletion;
+export const externalListEdit = "\n\n## Наброски\nТекст сохранён извне\n";
+
+const brokenNextHeading = "\r\n## [[Оборванный заголовок";
+const completionList = completionHeader + projectHeading + "\r\n";
+
+export const completionBeforeBrokenHeading = {
+  unchecked: completionList + completionRow(" ") + brokenNextHeading + afterCompletion,
+  checked: completionList + completionRow("x") + brokenNextHeading + afterCompletion,
+};
+export const completionWithTwoTasks = completionList + completionRow(" ") + "\r\n- [ ] [[Вторая задача]]";
+export const completionWithShortLink = completionList + "- [ ] [[Черновик]]";
+export const aliasedBlogTasks = completionHeader + [
+  todayHeading,
+  "- [ ] [[Блог/Черновик блога]]",
+  "## [[Блог/Блог|Контент]]",
+].join("\r\n");

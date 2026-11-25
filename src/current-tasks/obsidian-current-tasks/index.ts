@@ -1,7 +1,7 @@
 export {
   openLinkedNote,
   readCurrentTasks,
+  setTaskCompletion,
   watchCurrentTasks,
-  type TasksSnapshot,
-  type LinkedTask,
 } from "./obsidian-current-tasks";
+export type { LinkedTask, LinkedTaskGroup, TasksSnapshot } from "./types";

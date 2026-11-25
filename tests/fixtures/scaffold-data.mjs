@@ -1,10 +1,41 @@
 const taskId = "tsk_example";
 
 export const taskNoteMarkdown = `---\nid: ${taskId}\n---\n`;
+export const differentTaskNoteMarkdown = "---\nid: tsk_replaced\n---\n";
+
+export const completionReviewNotes = {
+  second: { path: "Мастерская/project inbox/Вторая задача.md", link: "Вторая задача" },
+  replacement: { path: "Мастерская/Черновик.md" },
+  blog: { path: "Блог/Блог.md", link: "Блог/Блог" },
+  blogTask: { path: "Блог/Черновик блога.md", link: "Блог/Черновик блога" },
+};
+
+export const aliasedBlogExpected = {
+  panel: /data-project-tone="blog"[^>]+aria-label="Контент"/,
+  todayPrefix: /class="pfa-project-emoji"[^>]*>📝<\/span><strong class="pfa-task-project">Контент:/,
+};
+
+export const completionFeedback = {
+  checked: /<input(?=[^>]*type="checkbox")(?=[^>]*checked="")(?=[^>]*aria-label="Выполнено: Черновик")/,
+  disabled: /<input(?=[^>]*type="checkbox")(?=[^>]*disabled="")/,
+  ambiguous: /Неоднозначная запись/,
+  conflict: /заметка изменилась/i,
+  duplicate: /повторяется/i,
+  taskChanged: /Файл или ID задачи изменился/i,
+};
 
 export const sourceNotePaths = {
   legacy: "Текущие действия.md",
   renamed: "Текущие задачи.md",
+};
+
+export const tasksDesign = {
+  period: /23–29 ноября/,
+  emptyToday: /На сегодня пока нет задач/,
+  todayPanel: 'data-section="today"',
+  projectPanel: 'data-section="project"',
+  disclosure: /aria-expanded="true"/,
+  history: /<button(?=[^>]*disabled="")(?=[^>]*aria-label="Перенести выполненные в историю")[^>]*>/,
 };
 
 export const currentTasksExpected = {

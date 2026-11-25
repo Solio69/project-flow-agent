@@ -12,8 +12,15 @@ import { runInNewContext } from "node:vm";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { createCurrentTasksFixture } from "./fixtures/current-tasks.mjs";
-import { obsoleteTasks, propertyTasks } from "./fixtures/current-tasks-markdown.mjs";
-import { currentTasksExpected, projectLinkCase, sourceNotePaths, watchFixture } from "./fixtures/scaffold-data.mjs";
+import {
+  aliasedBlogTasks, ambiguousCompletion, completionBeforeBrokenHeading, completionCases,
+  completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
+  obsoleteTasks, propertyTasks,
+} from "./fixtures/current-tasks-markdown.mjs";
+import {
+  aliasedBlogExpected, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown,
+  projectLinkCase, sourceNotePaths, taskNoteMarkdown, tasksDesign, watchFixture,
+} from "./fixtures/scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
 const project = fileURLToPath(new URL("../", import.meta.url));
@@ -78,6 +85,21 @@ test("кнопка открывает, повторно активирует и 
   assert.equal(mounts.length, 3, "после ошибки можно открыть вкладку повторно");
 });
 
+test("макет показывает период, пустой блок «Сегодня» и доступные действия просмотра", async () => {
+  const fixture = await createCurrentTasksFixture();
+  const { mounts, ribbonClick } = fixture;
+  const { period, emptyToday, todayPanel, projectPanel, disclosure, history } = tasksDesign;
+  await ribbonClick();
+  const { markup } = mounts.at(-1);
+  assert.match(markup, period);
+  assert.match(markup, emptyToday);
+  assert.ok(markup.includes(todayPanel) && markup.includes(projectPanel));
+  assert.ok(markup.indexOf(todayPanel) < markup.indexOf(projectPanel));
+  assert.match(markup, disclosure);
+  assert.match(markup, history);
+  await fixture.activeLeaf.view.onClose();
+});
+
 test("список читает прежнюю заметку и переключается на новое имя при её появлении", async () => {
   const fixture = await createCurrentTasksFixture();
   const { controls, mounts, ribbonClick, emitModify, renamedSource } = fixture;
@@ -88,6 +110,165 @@ test("список читает прежнюю заметку и переклю�
   await emitModify(renamedSource);
   assert.equal(mounts.at(-1).element.props.state.document.sourcePath, sourceNotePaths.renamed);
   assert.match(mounts.at(-1).markup, legacyTask);
+  await fixture.activeLeaf.view.onClose();
+});
+
+test("галочки меняют только отметку и перечитывают оба списка", async () => {
+  const fixture = await createCurrentTasksFixture();
+  const { controls, leaves, mounts, ribbonClick, emitModify, writes } = fixture;
+  const props = () => mounts.at(-1).element.props;
+  const reopen = async () => {
+    await fixture.activeLeaf.view.onClose();
+    leaves.pop();
+    await ribbonClick();
+  };
+
+  await ribbonClick();
+  assert.equal(props().onSetCompleted, undefined, "старый формат остаётся в режиме просмотра");
+  for (const { unchecked, checked } of completionCases) {
+    controls.markdown = unchecked;
+    await emitModify();
+    const { state: { document }, onSetCompleted } = props();
+    assert.equal(typeof onSetCompleted, "function", "галочка получает команду для согласованного формата");
+    const [task] = document.groups.flatMap((group) => group.tasks);
+    await onSetCompleted(task, true);
+    assert.equal(controls.markdown, checked);
+    assert.match(mounts.at(-1).markup, completionFeedback.checked);
+    await onSetCompleted(task, true);
+    await reopen();
+    assert.match(mounts.at(-1).markup, completionFeedback.checked);
+    const { state: { document: updated }, onSetCompleted: apply } = props();
+    const [updatedTask] = updated.groups.flatMap((group) => group.tasks);
+    await apply(updatedTask, false);
+    assert.equal(controls.markdown, unchecked);
+    await reopen();
+    assert.doesNotMatch(mounts.at(-1).markup, completionFeedback.checked);
+  }
+  assert.deepEqual(writes, completionCases.flatMap(({ checked, unchecked }) => [checked, unchecked]));
+  await fixture.activeLeaf.view.onClose();
+});
+
+async function completeFirstTask(mounts) {
+  const { onSetCompleted, state: { document } } = mounts.at(-1).element.props;
+  const [task] = document.groups.flatMap((group) => group.tasks);
+  await onSetCompleted(task, true);
+}
+
+test("галочки защищены от дубликатов, внешних правок и смены ID", async () => {
+  const fixture = await createCurrentTasksFixture();
+  const { controls, mounts, notices, writes, note, ribbonClick, emitModify } = fixture;
+  const first = completionCases[0];
+  controls.markdown = first.unchecked;
+  await ribbonClick();
+
+  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  await completeFirstTask(mounts);
+  assert.equal(controls.markdown, first.unchecked + externalListEdit);
+  assert.match(notices.at(-1), completionFeedback.conflict);
+  controls.beforeProcess = () => { note.stat.mtime++; };
+  await completeFirstTask(mounts);
+  assert.equal(controls.markdown, first.unchecked + externalListEdit);
+  assert.match(notices.at(-1), completionFeedback.taskChanged);
+  controls.beforeProcess = undefined;
+
+  for (const [markdown, message] of [[ambiguousCompletion, completionFeedback.ambiguous], [duplicatedCompletion, completionFeedback.duplicate]]) {
+    controls.markdown = markdown;
+    await emitModify();
+    await completeFirstTask(mounts);
+    assert.equal(controls.markdown, markdown);
+    assert.match(notices.at(-1), message);
+  }
+
+  controls.markdown = first.unchecked;
+  await emitModify();
+  controls.taskMarkdown = differentTaskNoteMarkdown;
+  await completeFirstTask(mounts);
+  assert.equal(controls.markdown, first.unchecked);
+  assert.match(notices.at(-1), completionFeedback.taskChanged);
+  assert.deepEqual(writes, []);
+  await fixture.activeLeaf.view.onClose();
+});
+
+async function openTasksFixture(t, markdown) {
+  const fixture = await createCurrentTasksFixture();
+  const { controls, ribbonClick } = fixture;
+  controls.markdown = markdown;
+  await ribbonClick();
+  t.after(() => fixture.activeLeaf.view.onClose());
+  return fixture;
+}
+
+test("галочка отвергает ID, продублированный после загрузки списка", async (t) => {
+  const { controls, mounts, notices, writes } = await openTasksFixture(t, completionWithTwoTasks);
+  controls.secondTaskMarkdown = taskNoteMarkdown;
+
+  await completeFirstTask(mounts);
+
+  assert.deepEqual(writes, []);
+  assert.match(notices.at(-1), completionFeedback.duplicate);
+});
+
+test("галочка отвергает короткую ссылку, сменившую цель перед записью", async (t) => {
+  const { controls, mounts, notices, replacementNote, writes } = await openTasksFixture(t, completionWithShortLink);
+  controls.beforeProcess = () => { controls.shortLinkDestination = replacementNote; };
+
+  await completeFirstTask(mounts);
+
+  assert.deepEqual(writes, []);
+  assert.match(notices.at(-1), completionFeedback.taskChanged);
+});
+
+test("оборванный заголовок следующего блока не мешает отметить задачу корректного проекта", async (t) => {
+  const { unchecked, checked } = completionBeforeBrokenHeading;
+  const { mounts, writes } = await openTasksFixture(t, unchecked);
+
+  await completeFirstTask(mounts);
+
+  assert.deepEqual(writes, [checked]);
+});
+
+test("псевдоним проекта сохраняет его цвет и эмодзи в карточке и в Сегодня", async (t) => {
+  const { mounts } = await openTasksFixture(t, aliasedBlogTasks);
+  const { markup } = mounts.at(-1);
+  const { panel, todayPrefix } = aliasedBlogExpected;
+
+  assert.match(markup, panel);
+  assert.match(markup, todayPrefix);
+});
+
+test("галочки недоступны, пока предыдущая запись не закончилась", async () => {
+  const fixture = await createCurrentTasksFixture();
+  const { controls, mounts, ribbonClick, writes } = fixture;
+  const { unchecked, checked } = completionCases[0];
+  controls.markdown = unchecked;
+  await ribbonClick();
+  const { onSetCompleted, state: { document } } = mounts.at(-1).element.props;
+  const [task] = document.groups.flatMap((group) => group.tasks);
+  const entered = Promise.withResolvers();
+  const continueWrite = Promise.withResolvers();
+  controls.beforeProcess = () => {
+    entered.resolve();
+    return continueWrite.promise;
+  };
+  const write = onSetCompleted(task, true);
+  await entered.promise;
+  assert.equal(mounts.at(-1).element.props.onSetCompleted, undefined);
+  assert.match(mounts.at(-1).markup, completionFeedback.disabled);
+  await onSetCompleted(task, false);
+  continueWrite.resolve();
+  await write;
+  assert.deepEqual(writes, [checked]);
+  await fixture.activeLeaf.view.onClose();
+});
+
+test("обычная вкладка включает галочки, а открытие только читает Markdown", async () => {
+  const fixture = await createCurrentTasksFixture();
+  const { controls, mounts, ribbonClick, writes } = fixture;
+  controls.markdown = completionCases[0].unchecked;
+  await ribbonClick();
+  assert.equal(typeof mounts.at(-1).element.props.onSetCompleted, "function");
+  assert.doesNotMatch(mounts.at(-1).markup, completionFeedback.disabled);
+  assert.deepEqual(writes, []);
   await fixture.activeLeaf.view.onClose();
 });
 

@@ -1,5 +1,5 @@
 export const CURRENT_TASKS_FILENAME = "Текущие задачи.md";
-// Сохранённые рабочие пространства Obsidian используют этот идентификатор.
+//TODO: Сохранённые рабочие пространства Obsidian используют этот идентификатор.
 export const CURRENT_TASKS_VIEW = "project-flow-agent-current-actions";
 export const CURRENT_TASKS_TITLE = "Текущие задачи";
 

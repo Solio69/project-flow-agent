@@ -1,4 +1,5 @@
 import { iso } from "zod/mini";
+import { noteName } from "../obsidian/note-name";
 import { TASK_GROUP_KIND, TASKS_FORMAT } from "./current-tasks.constants";
 import {
   DIAGNOSTIC_COPY,
@@ -43,6 +44,7 @@ export interface CurrentTask {
 export interface CurrentTaskGroup {
   kind: (typeof TASK_GROUP_KIND)[keyof typeof TASK_GROUP_KIND];
   line: number;
+  nextHeadingLine?: number;
   title: string;
   link?: string;
   tasks: CurrentTask[];
@@ -166,7 +168,7 @@ function wikiLink(contents: string) {
   const [target, alias] = contents.split("|", 2);
   const link = target.trim();
   if (!link) return;
-  const filename = link.split("#")[0].split("/").pop()?.replace(/\.md$/i, "");
+  const filename = noteName(link);
   return { link, title: alias?.trim() || filename || link };
 }
 
@@ -220,6 +222,7 @@ export function parseCurrentTasks(markdown: string): CurrentTasksDocument {
     const heading = HEADING_PATTERN.exec(sourceText);
     if (heading) {
       const [, marker, headingText] = heading;
+      if (group) group.nextHeadingLine = line;
       group = undefined;
       if (marker !== PROJECT_HEADING_MARKER) continue;
       const label = headingText.replace(TRAILING_HEADING_MARKERS_PATTERN, "").trim();
