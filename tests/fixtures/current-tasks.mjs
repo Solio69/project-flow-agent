@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { legacyTasks } from "./current-tasks-markdown.mjs";
 import {
   blogTaskMarkdown, completionReviewNotes, createTaskCase, currentTasksExpected, differentTaskNoteMarkdown,
-  iconizeFixture, projectLinkCase, renameTaskCase, sourceNotePaths, taskNoteMarkdown,
+  iconizeFixture, projectLinkCase, renameTaskCase, sourceNotePaths, taskNoteMarkdown, transferTaskCase,
 } from "./scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -51,6 +51,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
   const blogNote = { path: blog.path };
   const projectNote = { path: projectNotePath };
   const inbox = { path: createTaskCase.inboxPath, children: [] };
+  const blogInbox = { path: transferTaskCase.inboxPath, children: [] };
   const controls = {
     iconize: iconizeFixture.defaultIcons,
     markdown: legacyTasks,
@@ -68,6 +69,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
     unindexedPaths: [],
     renameFailure: false,
     renameLinkFailure: false,
+    updateLinksAfterRename: true,
     beforeRenameLinks: undefined,
   };
   const noteReaders = new Map([
@@ -184,7 +186,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
       },
     },
     getFolderByPath(path) {
-      return path === inbox.path ? inbox : null;
+      return path === inbox.path ? inbox : path === blogInbox.path ? blogInbox : null;
     },
     getAbstractFileByPath(path) {
       return this.getFileByPath(path) ?? this.getFolderByPath(path);
@@ -304,10 +306,12 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
       emit("rename", file, previous);
       await controls.beforeRenameLinks?.();
       if (controls.renameLinkFailure) throw new Error("Link update rejected");
-      controls.markdown = controls.markdown
-        .replaceAll(renameTaskCase.oldLink, path.slice(0, -3))
-        .replaceAll("[[Черновик]]", "[[" + path.slice(0, -3) + "]]");
-      emit("modify", source);
+      if (controls.updateLinksAfterRename) {
+        controls.markdown = controls.markdown
+          .replaceAll(renameTaskCase.oldLink, path.slice(0, -3))
+          .replaceAll("[[Черновик]]", "[[" + path.slice(0, -3) + "]]");
+        emit("modify", source);
+      }
     },
   };
   const app = { workspace, vault, metadataCache, fileManager };

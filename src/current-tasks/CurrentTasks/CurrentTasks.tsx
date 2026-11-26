@@ -4,6 +4,7 @@ import { CreateTaskDialog, type CreateTaskProject, type RequestCreateTask } from
 import { TasksList } from "../TasksList";
 import { NoteLink, type OpenNote } from "../NoteLink";
 import { RenameTaskDialog, type RenameSelection, type RequestRenameTask } from "../RenameTaskDialog";
+import { TaskTransferDialog } from "../TaskTransferDialog";
 import type { CompletedVisibility } from "../completed-visibility";
 import type { SetCompleted } from "../task-completion";
 import type { CreateTask } from "../task-create";
@@ -12,11 +13,12 @@ import { PANEL_TITLE_SELECTOR, TASK_PANEL_SELECTOR, TASK_ROW_PATH_SELECTOR } fro
 import type { ReorderTask } from "../task-reorder";
 import type { MoveTask } from "../task-move";
 import type { RenameTask } from "../task-rename";
+import type { RequestTransferTask, TransferReceipt, TransferSelection, TransferTask } from "../task-transfer";
 import { LOADING_STATUS } from "./constants";
 import { isKindLoading, isKindReady, type CurrentTasksState } from "./state";
 
 type CreateFocus = { control: HTMLButtonElement; taskPath?: string };
-type RenameFocus = { control: HTMLButtonElement; panel: Element | null };
+type TaskActionFocus = { control: HTMLButtonElement; panel: Element | null };
 
 function focusPanelTitle(panel: Element | null) {
   return focusTaskElement(panel?.querySelector<HTMLHeadingElement>(PANEL_TITLE_SELECTOR));
@@ -33,7 +35,7 @@ function focusCreatedTask(control: HTMLButtonElement, path: string): boolean {
 
 export function CurrentTasks({
   title, state, completedVisibility: { get, set, subscribe },
-  onOpenNote, onOpenSource, onSetCompleted, onMoveTask, onReorderTask, onCreateTask, onRenameTask,
+  onOpenNote, onOpenSource, onSetCompleted, onMoveTask, onReorderTask, onCreateTask, onRenameTask, onTransferTask,
 }: {
   title: string;
   state: CurrentTasksState;
@@ -45,12 +47,17 @@ export function CurrentTasks({
   onReorderTask?: ReorderTask;
   onCreateTask?: CreateTask;
   onRenameTask?: RenameTask;
+  onTransferTask?: TransferTask;
 }) {
   const showCompleted = useSyncExternalStore(subscribe, get, get);
   const [createProject, setCreateProject] = useState<CreateTaskProject>();
   const createFocus = useRef<CreateFocus | null>(null);
   const [renameSelection, setRenameSelection] = useState<RenameSelection>();
-  const renameFocus = useRef<RenameFocus | null>(null);
+  const renameFocus = useRef<TaskActionFocus | null>(null);
+  const [transferSelection, setTransferSelection] = useState<TransferSelection>();
+  const [lastTransfer, setLastTransfer] = useState<TransferReceipt>();
+  const transferFocus = useRef<TaskActionFocus | null>(null);
+  const screen = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const ready = isKindReady(state);
   const sourcePath = ready ? state.document.sourcePath : undefined;
@@ -65,6 +72,13 @@ export function CurrentTasks({
     ? (task, project, control) => {
       renameFocus.current = { control, panel: control.closest(TASK_PANEL_SELECTOR) };
       setRenameSelection({ task, project, sourceMarkdown: state.document.sourceMarkdown });
+    }
+    : undefined;
+  const requestTransferTask: RequestTransferTask | undefined = onTransferTask
+    ? (selection, control) => {
+      transferFocus.current = { control, panel: control.closest(TASK_PANEL_SELECTOR) };
+      setLastTransfer(undefined);
+      setTransferSelection(selection);
     }
     : undefined;
 
@@ -91,10 +105,29 @@ export function CurrentTasks({
     if (!focusPanelTitle(panel)) focusTaskElement(pageHeading.current);
   }, [renameSelection]);
 
+  useLayoutEffect(() => {
+    const { current: pending } = transferFocus;
+    if (transferSelection || !pending) return;
+
+    const { control, panel } = pending;
+    transferFocus.current = null;
+    if (!canRestoreTaskFocus(control) || focusTaskControl(control)) return;
+
+    const panels = screen.current?.querySelectorAll<HTMLElement>(TASK_PANEL_SELECTOR);
+    const destination = lastTransfer && Array.from(panels ?? []).find(({ dataset: { projectPath } }) =>
+      projectPath === lastTransfer.projectPath);
+    if (!focusPanelTitle(destination ?? panel)) focusTaskElement(pageHeading.current);
+  }, [lastTransfer, transferSelection]);
+
   function closeCreateDialog(taskPath?: string) {
     const { current: pending } = createFocus;
     if (pending) pending.taskPath = taskPath;
     setCreateProject(undefined);
+  }
+
+  function closeTransferDialog(result?: TransferReceipt) {
+    setLastTransfer(result);
+    setTransferSelection(undefined);
   }
 
   function renderContent() {
@@ -111,6 +144,8 @@ export function CurrentTasks({
           onReorderTask={onReorderTask}
           onRequestCreateTask={requestCreateTask}
           onRequestRenameTask={requestRenameTask}
+          onRequestTransferTask={requestTransferTask}
+          lastTransfer={lastTransfer}
         />
       );
     }
@@ -122,7 +157,7 @@ export function CurrentTasks({
   }
 
   return (
-    <section className="pfa-current-tasks">
+    <section className="pfa-current-tasks" ref={screen}>
       <header className="pfa-page-heading">
         <h2 ref={pageHeading} tabIndex={OMIT_FROM_TAB_ORDER}>
           <NoteLink note={sourceNote} onOpenNote={onOpenSource} />
@@ -134,6 +169,9 @@ export function CurrentTasks({
       )}
       {renameSelection && (
         <RenameTaskDialog selection={renameSelection} renameTask={onRenameTask} onClose={() => setRenameSelection(undefined)} />
+      )}
+      {transferSelection && (
+        <TaskTransferDialog selection={transferSelection} transferTask={onTransferTask} onClose={closeTransferDialog} />
       )}
     </section>
   );

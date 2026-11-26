@@ -557,19 +557,16 @@
     padding: 10px 14px 12px;
   }
   #pfa-current-demo .pfa-dialog footer [data-cancel][hidden] + button { inline-size: 100%; }
+  #pfa-current-demo .pfa-dialog [data-confirm]:disabled { opacity: .5; }
   #pfa-current-demo .pfa-fields { display: grid; gap: 9px; overflow-wrap: anywhere; }
   #pfa-current-demo .pfa-fields label { display: grid; gap: 4px; }
-  #pfa-current-demo .pfa-fields input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 9px; border: 1px solid var(--pfa-input-border); border-radius: 8px; background: var(--pfa-input-surface); color: var(--pfa-text); font-size: 16px; }
+  #pfa-current-demo .pfa-task-name input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 9px; border: 1px solid var(--pfa-input-border); border-radius: 8px; background: var(--pfa-input-surface); color: var(--pfa-text); font-size: 16px; }
   #pfa-current-demo[data-theme="dark"] .pfa-fields input::placeholder { color: var(--pfa-muted); opacity: 1; }
   #pfa-current-demo .pfa-task-name { margin-top: 4px; }
   #pfa-current-demo .pfa-task-name span { color: var(--pfa-caption); font-size: 12px; }
   #pfa-current-demo .pfa-task-name input:focus {
     --pfa-highlight: var(--pfa-violet);
     outline: none;
-  }
-  #pfa-current-demo .pfa-task-name input:focus-visible {
-    outline: 2px solid var(--pfa-ui-accent);
-    outline-offset: 2px;
   }
   #pfa-current-demo :is(.pfa-today, .pfa-task-name input:focus) {
     border-color: color-mix(in srgb, var(--pfa-highlight) 38%, var(--pfa-surface));
@@ -583,6 +580,35 @@
     align-items: center;
     gap: 6px;
     font-weight: 600;
+  }
+  #pfa-current-demo .pfa-transfer-summary { display: grid; gap: 4px; }
+  #pfa-current-demo .pfa-transfer-summary p { color: var(--pfa-caption); font-size: 12px; }
+  #pfa-current-demo .pfa-destinations {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    margin: 4px 0 0;
+    padding: 0;
+    border: 0;
+  }
+  #pfa-current-demo .pfa-destinations legend { margin-bottom: 6px; padding: 0; color: var(--pfa-caption); font-size: 12px; }
+  #pfa-current-demo .pfa-destinations label {
+    grid-template-columns: 21px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    min-height: 42px;
+    padding: 7px 10px;
+    border: 1px solid var(--pfa-border);
+    border-radius: 8px;
+  }
+  #pfa-current-demo .pfa-destinations label:hover { background: var(--pfa-bg); }
+  #pfa-current-demo .pfa-destinations label:has(input:checked) {
+    border-color: var(--pfa-violet);
+    background: color-mix(in srgb, var(--pfa-violet) 16%, var(--pfa-task-surface));
+  }
+  #pfa-current-demo .pfa-destinations input { width: 16px; height: 16px; margin: 0; accent-color: var(--pfa-ui-accent); }
+  @media (pointer: coarse) {
+    #pfa-current-demo .pfa-destinations label { min-height: 44px; }
   }
   #pfa-current-demo .pfa-task-summary { list-style: none; margin: 0; padding: 0; }
   #pfa-current-demo .pfa-task-summary li { display: flex; align-items: flex-start; gap: 8px; padding: 7px 2px; }
@@ -859,7 +885,9 @@
       popup.innerHTML = `<button class="cursor-interaction" type="button" data-action="reorder" data-step="-1" ${index === 0 ? "disabled" : ""}>↑ Выше</button>
         <button class="cursor-interaction" type="button" data-action="reorder" data-step="1" ${index === items.length - 1 ? "disabled" : ""}>↓ Ниже</button>`;
     } else {
+      const canTransfer = state.projectOrder.some(project => project !== state.tasks[id].project);
       popup.innerHTML = `<button class="cursor-interaction" type="button" data-action="rename">${icon("pencil", "✎")}Переименовать</button>
+        <button class="cursor-interaction" type="button" data-action="move-project" aria-haspopup="dialog" ${canTransfer ? "" : "disabled"}>${icon("folder-input", "↪")}Перенести в другой проект</button>
         <button class="cursor-interaction" type="button" data-action="queue">${icon("inbox", "▤")}<span>Убрать из текущих задач<small>Задача вернётся в очередь проекта</small></span></button>
         <button class="cursor-interaction" type="button" data-action="archive">${icon("trash-2", "×")}<span>Удалить задачу<small>Файл переместится в архив</small></span></button>`;
     }
@@ -882,6 +910,7 @@
     error.hidden = true;
     error.textContent = "";
     confirmButton.hidden = !onSubmit;
+    confirmButton.disabled = Boolean(fields.querySelector("[name=destination]"));
     confirmButton.textContent = label || "Сохранить";
     confirmButton.classList.toggle("pfa-danger", danger);
     cancelButton.hidden = dismissOnBackdrop;
@@ -1038,6 +1067,43 @@
     state.lists[group] = state.lists[group].filter(item => item !== id);
   }
 
+  function transferTask(group, id, source) {
+    const task = state.tasks[id];
+    const current = projectFor(task.project);
+    const destinations = state.projectOrder.filter(project => project !== current.id).map(projectFor);
+    if (!destinations.length) return;
+    openDialog({
+      title: "Перенести задачу",
+      symbol: icon("folder-input", "↪"),
+      content: `<div class="pfa-transfer-summary">
+          <strong>${html(task.title)}</strong>
+          <p>Из проекта «${html(current.name)}»</p>
+        </div>
+        <fieldset class="pfa-destinations">
+          <legend>Куда перенести</legend>
+          ${destinations.map(project => `<label class="cursor-interaction">
+            ${projectEmoji(project)}<span>${html(project.name)}</span>
+            <input type="radio" name="destination" value="${project.id}" required>
+          </label>`).join("")}
+        </fieldset>`,
+      label: "Перенести",
+      dismissOnBackdrop: true,
+      source,
+      onSubmit(values) {
+        const destination = destinations.find(project => project.id === values.get("destination"));
+        if (!destination) return "Выберите проект";
+        task.project = destination.id;
+        if (group !== "today") {
+          removeFrom(group, id);
+          state.lists[destination.id].push(id);
+          state.collapsedProjects = state.collapsedProjects.filter(project => project !== destination.id);
+          modal.focusGroup = destination.id;
+        }
+        update(`Задача перенесена в «${destination.name}»`);
+      }
+    });
+  }
+
   function move(group, id) {
     removeFrom(group, id);
     const task = state.tasks[id];
@@ -1131,6 +1197,7 @@
       case "history": sendToHistory(control); break;
       case "close": dialog.close(); break;
       case "rename": namedTask(state.tasks[selectedId].project, selectedId, currentMenu.trigger); break;
+      case "move-project": transferTask(currentMenu.group, selectedId, currentMenu.trigger); break;
       case "queue":
         removeFrom(currentMenu.group, selectedId);
         state.queues[state.tasks[selectedId].project].unshift(selectedId);
@@ -1212,6 +1279,9 @@
     modal.pressedBackdrop = false;
     if (dismiss) dialog.close();
   });
+  form.addEventListener("change", event => {
+    if (event.target.name === "destination") confirmButton.disabled = false;
+  });
   form.addEventListener("submit", event => {
     event.preventDefault();
     if (!modal?.onSubmit) return;
@@ -1223,12 +1293,13 @@
   });
   dialog.addEventListener("close", () => {
     const source = modal?.source;
+    const focusGroup = modal?.focusGroup;
     modal = null;
     if (source?.isConnected) source.focus();
     else if (source) {
       const { action, id, group } = source.dataset;
       const replacement = [...root.querySelectorAll(`button[data-action="${action}"]`)].find(
-        button => button.dataset.id === id && button.dataset.group === group
+        button => button.dataset.id === id && button.dataset.group === (focusGroup ?? group)
       );
       (replacement || root.querySelector('[data-action="period"]')).focus({ preventScroll: true });
     }

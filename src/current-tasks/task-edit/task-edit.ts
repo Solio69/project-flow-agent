@@ -1,10 +1,20 @@
 import { TASKS_FORMAT } from "../current-tasks.constants";
 import { parseCurrentTasks } from "../parse-current-tasks";
 import { HORIZONTAL_RULE_PATTERN } from "../parse-current-tasks.constants";
-import type { ActionDiagnostic, CurrentTask, CurrentTaskGroup, CurrentTasksDocument } from "../types";
-import { SECTION_GAP_OPTIONS, TASK_EDIT_COPY } from "./constants";
+import type {
+  ActionDiagnostic,
+  CurrentTask,
+  CurrentTaskGroup,
+  CurrentTasksDocument,
+} from "../types";
+import {
+  INVALID_LINK_CHARACTERS,
+  SECTION_GAP_OPTIONS,
+  TASK_EDIT_COPY,
+} from "./constants";
 
-const { invalidList, ambiguousGroup, conflict, interleavedText } = TASK_EDIT_COPY;
+const { invalidList, ambiguousGroup, conflict, interleavedText, invalidLink } =
+  TASK_EDIT_COPY;
 
 export type TaskRow = { line: number; link: string };
 type TaskIdentity = TaskRow & { id: string; notePath: string };
@@ -12,13 +22,27 @@ export type EditableTask = CurrentTask & TaskIdentity;
 
 export class TaskEditError extends Error {}
 
-export function isEditableTask(task: CurrentTask & Partial<TaskIdentity>): task is EditableTask {
+export function assertTaskLinkPath(path: string) {
+  if (INVALID_LINK_CHARACTERS.test(path)) throw new TaskEditError(invalidLink);
+}
+
+export function isEditableTask(
+  task: CurrentTask & Partial<TaskIdentity>,
+): task is EditableTask {
   const { id, link, notePath } = task;
   return Boolean(id && link && notePath);
 }
 
-export function isEditableList({ format, period, hasDuplicatePeriodFields }: CurrentTasksDocument) {
-  return format === TASKS_FORMAT.properties && period !== undefined && !hasDuplicatePeriodFields;
+export function isEditableList({
+  format,
+  period,
+  hasDuplicatePeriodFields,
+}: CurrentTasksDocument) {
+  return (
+    format === TASKS_FORMAT.properties &&
+    period !== undefined &&
+    !hasDuplicatePeriodFields
+  );
 }
 
 export function readEditableList(markdown: string) {
@@ -27,16 +51,26 @@ export function readEditableList(markdown: string) {
   return document;
 }
 
-export function findTaskGroup(groups: readonly CurrentTaskGroup[], { line, link }: TaskRow) {
-  const group = groups.find(({ tasks }) => tasks.some((task) => task.line === line && task.link === link));
+export function findTaskGroup(
+  groups: readonly CurrentTaskGroup[],
+  { line, link }: TaskRow,
+) {
+  const group = groups.find(({ tasks }) =>
+    tasks.some((task) => task.line === line && task.link === link),
+  );
   if (!group) throw new TaskEditError(conflict);
   return group;
 }
 
-export function assertWritableGroup(group: CurrentTaskGroup, diagnostics: readonly ActionDiagnostic[]) {
+export function assertWritableGroup(
+  group: CurrentTaskGroup,
+  diagnostics: readonly ActionDiagnostic[],
+) {
   const { line: groupLine, nextHeadingLine = Infinity } = group;
-  const hasAmbiguousRow = diagnostics.some(({ line }) =>
-    line !== undefined && line > groupLine && line < nextHeadingLine);
+  const hasAmbiguousRow = diagnostics.some(
+    ({ line }) =>
+      line !== undefined && line > groupLine && line < nextHeadingLine,
+  );
   if (hasAmbiguousRow) throw new TaskEditError(ambiguousGroup);
 }
 
@@ -56,26 +90,35 @@ export function assertFreeTaskGap(
 ) {
   for (let line = start + 1; line < end; line++) {
     const text = parts[rowPartIndex(line)].trim();
-    if (!text || (allowSectionSeparator && HORIZONTAL_RULE_PATTERN.test(text))) continue;
+    const canSkipSectionSeparator = allowSectionSeparator && HORIZONTAL_RULE_PATTERN.test(text);
+    if (!text || canSkipSectionSeparator) continue;
     throw new TaskEditError(interleavedText(line));
   }
 }
 
-export function arrangeTaskRows(parts: string[], group: CurrentTaskGroup, orderedLines: readonly number[]) {
-  const { line: heading, nextHeadingLine = markdownEndBoundary(parts), tasks } = group;
+export function arrangeTaskRows(
+  parts: string[],
+  group: CurrentTaskGroup,
+  orderedLines: readonly number[],
+) {
+  const {
+    line: heading,
+    nextHeadingLine = markdownEndBoundary(parts),
+    tasks,
+  } = group;
   const lines = tasks.map(({ line }) => line);
   const [firstLine] = lines;
   const lastIndex = lines.length - 1;
   const lastLine = lines[lastIndex];
 
-  if (firstLine !== undefined && firstLine !== orderedLines[0]) {
+  if (firstLine !== undefined && firstLine !== orderedLines[0])
     assertFreeTaskGap(parts, heading, firstLine, SECTION_GAP_OPTIONS);
-  }
-  if (lastLine !== undefined && lastLine !== orderedLines[lastIndex]) {
+  if (lastLine !== undefined && lastLine !== orderedLines[lastIndex])
     assertFreeTaskGap(parts, lastLine, nextHeadingLine, SECTION_GAP_OPTIONS);
-  }
 
-  const originalIndexByLine = new Map(lines.map((line, index) => [line, index]));
+  const originalIndexByLine = new Map(
+    lines.map((line, index) => [line, index]),
+  );
   let rightmostOriginalIndex = -1;
 
   for (const [index, line] of orderedLines.entries()) {
@@ -85,10 +128,12 @@ export function arrangeTaskRows(parts: string[], group: CurrentTaskGroup, ordere
 
     const originalLine = lines[index];
     const nextLine = lines[index + 1];
-    const keepsNeighbors = line === originalLine && orderedLines[index + 1] === nextLine;
+    const keepsNeighbors =
+      line === originalLine && orderedLines[index + 1] === nextLine;
     //TODO: Задача из правой части в начале нового порядка означает пересечение границы.
     const crossesGap = rightmostOriginalIndex > index;
-    if (nextLine === undefined || (!crossesGap && keepsNeighbors)) continue;
+    const canSkipGapCheck = !crossesGap && keepsNeighbors;
+    if (nextLine === undefined || canSkipGapCheck) continue;
 
     assertFreeTaskGap(parts, originalLine, nextLine);
   }

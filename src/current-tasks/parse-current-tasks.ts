@@ -20,6 +20,7 @@ import {
   TODAY_HEADING,
   TRAILING_HEADING_MARKERS_PATTERN,
   UNCHECKED_MARK,
+  WIKI_LINK_ALIAS_SEPARATOR,
   WIKI_LINK_DELIMITERS,
 } from "./parse-current-tasks.constants";
 import type {
@@ -142,7 +143,7 @@ function readLegacyPeriod(lines: SourceLine[], diagnostics: ActionDiagnostic[]) 
 }
 
 function wikiLink(contents: string) {
-  const [target, alias] = contents.split("|", 2);
+  const [target, alias] = contents.split(WIKI_LINK_ALIAS_SEPARATOR, 2);
   const link = target.trim();
   if (!link) return;
   const filename = noteName(link);

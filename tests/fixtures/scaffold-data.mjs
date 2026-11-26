@@ -6,6 +6,14 @@ const draftLink = `${draftFolder}/${draftTitle}`;
 const renamedDraftLink = `${draftFolder}/${renamedDraftTitle}`;
 
 export const taskNoteMarkdown = `---\nid: ${taskId}\n---\n`;
+export const transferTaskCase = {
+  projectPath: "Блог/Блог.md",
+  inboxPath: "Блог/project inbox",
+  taskPath: "Блог/project inbox/Черновик.md",
+  outsidePeriod: "Вне плана/Вне плана.md",
+  occupied: /уже есть файл/,
+  partial: /файл уже перенесён/i,
+};
 export const renameTaskCase = {
   oldPath: `${draftLink}.md`,
   oldLink: draftLink,

@@ -12,10 +12,10 @@
   z-index: 2;
   inset-block-start: calc(100% + 5px);
   inset-inline-end: 0;
-  min-inline-size: 150px;
+  inline-size: min(272px, calc(100cqi - 12px));
   padding: 4px;
   border: 1px solid var(--pfa-border);
-  border-radius: 10px;
+  border-radius: 13px;
   background: var(--pfa-task-surface);
   box-shadow: 0 8px 24px var(--pfa-menu-shadow);
 }
@@ -44,14 +44,39 @@
 }
 
 .pfa-current-tasks .pfa-task-menu .pfa-control {
+  position: relative;
   justify-content: flex-start;
+  align-items: flex-start;
   inline-size: 100%;
+  block-size: auto;
+  padding: 8px;
+  gap: 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   text-align: start;
 }
 
-.pfa-current-tasks .pfa-task-menu .pfa-control:hover {
+.pfa-current-tasks .pfa-task-menu .pfa-control + .pfa-control::before {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 8px;
+  border-block-start: 1px solid var(--pfa-border);
+  pointer-events: none;
+  content: "";
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control .pfa-icon {
+  margin-block-start: 1px;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control small {
+  display: block;
+  margin-block-start: 2px;
+  color: var(--pfa-muted);
+  font-size: 12px;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control:not(:disabled):hover {
   background: var(--pfa-surface);
 }

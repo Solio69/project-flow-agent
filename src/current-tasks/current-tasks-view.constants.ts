@@ -3,6 +3,7 @@ import { CURRENT_TASKS_FILENAME } from "./current-tasks.constants";
 export const ERROR_COPY = {
   createLog: "Project Flow Agent: создание задачи",
   renameLog: "Project Flow Agent: переименование задачи",
+  transferLog: "Project Flow Agent: перенос задачи в другой проект",
   sourceMissing: "Заметка «" + CURRENT_TASKS_FILENAME + "» не найдена в этом хранилище.",
   sourceUnreadable: "Не удалось прочитать «" + CURRENT_TASKS_FILENAME + "».",
   noteOpenFailed: "Не удалось открыть связанную заметку.",

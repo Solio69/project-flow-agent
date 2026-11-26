@@ -11,7 +11,12 @@ export type MoveTask = (task: EditableTask) => Promise<void>;
 
 type MoveDestination = { headingLine: number; afterLine: number };
 
-export function moveTaskRow(markdown: string, task: TaskRow, { headingLine, afterLine }: MoveDestination) {
+export function moveTaskRow(
+  markdown: string,
+  task: TaskRow,
+  { headingLine, afterLine }: MoveDestination,
+  { allowCompleted = false } = {},
+) {
   const { groups, diagnostics } = readEditableList(markdown);
   const origin = findTaskGroup(groups, task);
   const destination = groups.find(({ line }) => line === headingLine);
@@ -26,9 +31,10 @@ export function moveTaskRow(markdown: string, task: TaskRow, { headingLine, afte
   const selectedIndex = originTasks.findIndex(({ line: rowLine }) => rowLine === line);
   const selected = originTasks[selectedIndex];
   if (!selected) throw new TaskEditError(conflict);
-  if (selected.completed) throw new TaskEditError(activeTaskRequired);
+  const { completed: selectedCompleted } = selected;
+  if (selectedCompleted && !allowCompleted) throw new TaskEditError(activeTaskRequired);
 
-  const anchorIndex = destinationTasks.findIndex(({ line: rowLine, completed }) => rowLine === afterLine && !completed);
+  const anchorIndex = destinationTasks.findIndex(({ line: rowLine, completed }) => rowLine === afterLine && (!completed || selectedCompleted));
   if (afterLine !== headingLine && anchorIndex === -1) throw new TaskEditError(conflict);
 
   const parts = markdown.split(PRESERVED_LINE_ENDING);

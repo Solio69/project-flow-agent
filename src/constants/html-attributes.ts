@@ -1,9 +1,11 @@
 export const BUTTON_TYPE = "button";
 export const SUBMIT_TYPE = "submit";
 export const CHECKBOX_TYPE = "checkbox";
+export const RADIO_TYPE = "radio";
 export const TRUE_STRING = "true";
 export const STATUS_ROLE = "status";
 export const ALERT_ROLE = "alert";
 export const GROUP_ROLE = "group";
+export const DIALOG_POPUP = "dialog";
 export const HIDDEN_SELECTOR = "[hidden]";
 export const OMIT_FROM_TAB_ORDER = -1;

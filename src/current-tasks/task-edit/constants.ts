@@ -5,7 +5,9 @@ export const TASK_EDIT_COPY = {
   ambiguousGroup: "Неоднозначная запись в списке. Исправьте отмеченные строки в заметке.",
   interleavedText: (line: number) => `Обнаружен текст между задачами на строке ${line}. Изменение отменено.`,
   duplicateTask: "Задача или её ID повторяется. Исправьте дубли в списке.",
+  invalidLink: "Путь к файлу задачи содержит символы, недопустимые во внутренней ссылке Obsidian.",
 } as const;
 
+export const INVALID_LINK_CHARACTERS = /[#|[\]^]|%%/u;
 export const PRESERVED_LINE_ENDING = /(\r\n|\n|\r)/;
 export const SECTION_GAP_OPTIONS = { allowSectionSeparator: true } as const;

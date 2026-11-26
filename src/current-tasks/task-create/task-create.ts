@@ -3,17 +3,17 @@ import { MARKDOWN_EXTENSION, MARKDOWN_EXTENSION_PATTERN } from "../../obsidian/c
 import { TASK_ID_FIELD, TASK_ID_PREFIX } from "../current-tasks.constants";
 import { FRONTMATTER_DELIMITER } from "../parse-current-tasks.constants";
 import {
-  assertFreeTaskGap, assertWritableGroup, markdownEndBoundary, PRESERVED_LINE_ENDING,
+  assertFreeTaskGap, assertTaskLinkPath, assertWritableGroup, markdownEndBoundary, PRESERVED_LINE_ENDING,
   readEditableList, rowPartIndex, SECTION_GAP_OPTIONS, TaskEditError,
 } from "../task-edit";
 import { isTodayGroup } from "../task-group";
 import {
-  DEFAULT_LINE_ENDING, FILENAME_DOT, INVALID_LINK_CHARACTERS, INVALID_TITLE_CHARACTERS,
+  DEFAULT_LINE_ENDING, FILENAME_DOT, INVALID_TITLE_CHARACTERS,
   NEW_TASK_ROW_PREFIX, NEW_TASK_ROW_SUFFIX, RESERVED_FILENAME, TASK_CREATE_COPY,
   TASK_TITLE_LIMIT, UUID_SEPARATOR, YAML_PROPERTY_SEPARATOR,
 } from "./constants";
 
-const { emptyTitle, invalidTitle, invalidLink, projectMissing, partial } = TASK_CREATE_COPY;
+const { emptyTitle, invalidTitle, projectMissing, partial } = TASK_CREATE_COPY;
 
 export type CreatedTaskReceipt = { path: string; id: string };
 export type CreateTaskRequest = { title: string; projectPath: string; pending?: CreatedTaskReceipt };
@@ -45,7 +45,7 @@ export function newTaskNote() {
 }
 
 export function appendProjectTask(markdown: string, headingLine: number, path: string) {
-  if (INVALID_LINK_CHARACTERS.test(path)) throw new TaskEditError(invalidLink);
+  assertTaskLinkPath(path);
   const { groups, diagnostics } = readEditableList(markdown);
   const group = groups.find(({ line }) => line === headingLine);
   if (!group || isTodayGroup(group)) throw new TaskEditError(projectMissing);

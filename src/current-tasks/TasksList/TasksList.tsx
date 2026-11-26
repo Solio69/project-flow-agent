@@ -9,11 +9,19 @@ import { TasksToolbar } from "../TasksToolbar";
 import { LIST_KEY_SEPARATOR } from "../current-tasks.constants";
 import type { LinkedTaskGroup, TasksSnapshot } from "../obsidian-current-tasks";
 import type { SetCompleted } from "../task-completion";
-import type { ReorderTask } from "../task-reorder";
-import { canRestoreTaskFocus, focusTaskControl, hasTaskControlFocus } from "../task-focus";
-import { PANEL_DISCLOSURE_SELECTOR, TASK_PANEL_SELECTOR } from "../task-focus.constants";
+import {
+  canRestoreTaskFocus,
+  focusTaskControl,
+  hasTaskControlFocus,
+} from "../task-focus";
+import {
+  PANEL_DISCLOSURE_SELECTOR,
+  TASK_PANEL_SELECTOR,
+} from "../task-focus.constants";
 import { isTodayGroup } from "../task-group";
 import type { MoveTask } from "../task-move";
+import type { ReorderTask } from "../task-reorder";
+import type { RequestTransferTask, TransferReceipt } from "../task-transfer";
 import type { ActionDiagnostic } from "../types";
 import {
   COPY,
@@ -48,6 +56,8 @@ export function TasksList({
   onReorderTask,
   onRequestCreateTask,
   onRequestRenameTask,
+  onRequestTransferTask,
+  lastTransfer,
 }: {
   document: TasksSnapshot;
   showCompleted: boolean;
@@ -58,6 +68,8 @@ export function TasksList({
   onReorderTask?: ReorderTask;
   onRequestCreateTask?: RequestCreateTask;
   onRequestRenameTask?: RequestRenameTask;
+  onRequestTransferTask?: RequestTransferTask;
+  lastTransfer?: TransferReceipt;
 }) {
   const { period, groups, diagnostics } = document;
   const completedToggleRef = useRef<HTMLButtonElement>(null);
@@ -78,12 +90,12 @@ export function TasksList({
 
   const moveFromButton: TaskFromButton | undefined = onMoveTask
     ? (task, control) => {
-      if (hasTaskControlFocus(control)) {
-        const { notePath } = task;
-        moveFocus.current = { control, notePath };
+        if (hasTaskControlFocus(control)) {
+          const { notePath } = task;
+          moveFocus.current = { control, notePath };
+        }
+        void onMoveTask(task);
       }
-      void onMoveTask(task);
-    }
     : undefined;
 
   useLayoutEffect(() => {
@@ -94,13 +106,20 @@ export function TasksList({
     const { control, notePath } = pending;
     if (!canRestoreTaskFocus(control) || focusTaskControl(control)) return;
 
-    const moveControls = panelsRef.current?.querySelectorAll<HTMLButtonElement>(TASK_MOVE_CONTROL_SELECTOR);
-    const next = Array.from(moveControls ?? []).find(({ dataset: { taskPath } }) => taskPath === notePath);
+    const moveControls = panelsRef.current?.querySelectorAll<HTMLButtonElement>(
+      TASK_MOVE_CONTROL_SELECTOR,
+    );
+    const next = Array.from(moveControls ?? []).find(
+      ({ dataset: { taskPath } }) => taskPath === notePath,
+    );
     if (focusTaskControl(next)) return;
 
     const panel = next?.closest(TASK_PANEL_SELECTOR);
-    const disclosure = panel?.querySelector<HTMLButtonElement>(PANEL_DISCLOSURE_SELECTOR);
-    if (!focusTaskControl(disclosure)) focusTaskControl(completedToggleRef.current);
+    const disclosure = panel?.querySelector<HTMLButtonElement>(
+      PANEL_DISCLOSURE_SELECTOR,
+    );
+    if (!focusTaskControl(disclosure))
+      focusTaskControl(completedToggleRef.current);
   }, [document, onMoveTask]);
 
   function focusCompletedToggle() {
@@ -139,6 +158,9 @@ export function TasksList({
           onReorderTask={onReorderTask}
           onRequestCreateTask={onRequestCreateTask}
           onRequestRenameTask={onRequestRenameTask}
+          onRequestTransferTask={onRequestTransferTask}
+          transferGroups={groups}
+          lastTransfer={lastTransfer}
         />
       );
     });
@@ -153,7 +175,9 @@ export function TasksList({
         completedToggleRef={completedToggleRef}
       />
       {hasDiagnostics && renderDiagnostics()}
-      <div className="pfa-task-panels" ref={panelsRef}>{renderPanels()}</div>
+      <div className="pfa-task-panels" ref={panelsRef}>
+        {renderPanels()}
+      </div>
     </>
   );
 }

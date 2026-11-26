@@ -18,6 +18,7 @@ import {
   renameCurrentTask,
   reorderCurrentTask,
   setTaskCompletion,
+  transferCurrentTask,
   watchCurrentTasks,
 } from "./obsidian-current-tasks";
 import type { SetCompleted } from "./task-completion";
@@ -25,15 +26,17 @@ import { PartialTaskCreation, TASK_CREATE_COPY, type CreateTask, type CreateTask
 import { isEditableList, TaskEditError } from "./task-edit";
 import type { MoveTask } from "./task-move";
 import { RenameTaskSourceChanged, TASK_RENAME_COPY, type RenameTask, type RenameTaskResult } from "./task-rename";
+import { PartialTaskTransfer, TASK_TRANSFER_COPY, type TransferTask, type TransferTaskResult } from "./task-transfer";
 import type { ReorderTask } from "./task-reorder";
 
 const { loading, error: errorState, ready } = CURRENT_TASKS_STATE;
 const {
   sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog,
-  completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog, renameLog,
+  completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog, renameLog, transferLog,
 } = ERROR_COPY;
 const { failed: createFailed, busy } = TASK_CREATE_COPY;
 const { failed: renameFailed } = TASK_RENAME_COPY;
+const { failed: transferFailed } = TASK_TRANSFER_COPY;
 
 type TaskEditHandlers = {
   onSetCompleted?: SetCompleted;
@@ -41,6 +44,7 @@ type TaskEditHandlers = {
   onReorderTask?: ReorderTask;
   onCreateTask?: CreateTask;
   onRenameTask?: RenameTask;
+  onTransferTask?: TransferTask;
 };
 
 export class CurrentTasksView extends ItemView {
@@ -185,6 +189,22 @@ export class CurrentTasksView extends ItemView {
           }
         });
         return result ?? { ok: false, message: busy };
+      },
+      onTransferTask: async (request) => {
+        const result = await this.withTaskEdit<TransferTaskResult>(state, async () => {
+          try {
+            const taskPath = await transferCurrentTask(this.app, document, request);
+            return { ok: true, taskPath };
+          } catch (error) {
+            if (error instanceof PartialTaskTransfer)
+              return { ok: false, message: error.message, pending: error.receipt };
+            if (error instanceof TaskEditError)
+              return { ok: false, message: error.message, pending: request.pending };
+            console.error(transferLog, error);
+            return { ok: false, message: transferFailed, pending: request.pending };
+          }
+        });
+        return result ?? { ok: false, message: busy, pending: request.pending };
       },
     };
   }

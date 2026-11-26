@@ -27,6 +27,8 @@ const projectHeading = "## [[Мастерская]]";
 const todayHeading = "## Сегодня";
 const { oldLink, oldTitle, newLink } = renameTaskCase;
 const draftWikiLink = `[[${oldLink}|${oldTitle}]]`;
+const shortDraftRow = `- [ ] [[${oldTitle}]]`;
+const ambiguousTaskRow = "- [ ] Ссылка [[A]] и [[B]]";
 const completionRow = (mark) => `-\t[${mark}]  ${draftWikiLink}  `;
 const afterCompletion = "\n\n# Другая часть\n- [ ] Другая запись\n";
 
@@ -57,7 +59,7 @@ export const taskWithTitlePrefix = {
 };
 
 export const ambiguousCompletion = completionHeader + projectHeading + "\r\n" + completionRow(" ")
-  + "\r\n- [ ] Ссылка [[A]] и [[B]]" + afterCompletion;
+  + "\r\n" + ambiguousTaskRow + afterCompletion;
 export const duplicatedCompletion = completionHeader + todayHeading + "\r\n" + completionRow(" ") + "\r\n"
   + projectHeading + "\r\n" + completionRow(" ") + afterCompletion;
 export const externalListEdit = "\n\n## Наброски\nТекст сохранён извне\n";
@@ -88,7 +90,7 @@ const completionOrderStates = [
 export const completionOrderCases = [todayHeading, projectHeading].map((heading) =>
   completionOrderStates.map((rows) => completionHeader + heading + "\r\n" + rows.join("\r\n") + afterCompletion),
 );
-export const completionWithShortLink = completionList + "- [ ] [[Черновик]]";
+export const completionWithShortLink = completionList + shortDraftRow;
 export const aliasedBlogTasks = completionHeader + [
   todayHeading,
   "- [ ] [[Блог/Черновик блога]]",
@@ -125,6 +127,13 @@ const moveDocument = (todayRows, projectRows) => completionHeader + [
   todayHeading, ...todayRows, projectHeading, ...projectRows, blogHeading,
 ].join("\r\n") + afterCompletion;
 const emptyTodayMove = [todayHeading, projectHeading, moveRow];
+export const transferTaskCases = [
+  { markdown: moveDocument([draftRow], [moveRow]), today: true, completed: false, updateLinks: true },
+  { markdown: moveDocument([], [draftRow]), today: false, completed: false, updateLinks: false },
+  { markdown: moveDocument([], [completionRow("x")]), today: false, completed: true, updateLinks: true },
+];
+export const transferWithShortLink = moveDocument([shortDraftRow], []);
+export const transferWithAmbiguousToday = moveDocument([draftRow, ambiguousTaskRow], []);
 
 export const createTaskMarkdown = completionHeader + [
   todayHeading, projectHeading, draftRow, previouslyCompleted, blogHeading,

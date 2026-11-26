@@ -79,7 +79,7 @@
   box-shadow: 0 2px 12px color-mix(in srgb, var(--pfa-create-focus-accent) 24%, transparent);
 }
 
-.pfa-current-tasks .pfa-create-fields input:focus-visible {
+.pfa-current-tasks .pfa-create-fields input[type="radio"]:focus-visible {
   outline: 2px solid var(--pfa-focus);
   outline-offset: 2px;
 }

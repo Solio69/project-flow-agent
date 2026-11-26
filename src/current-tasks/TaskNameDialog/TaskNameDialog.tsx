@@ -1,25 +1,40 @@
 import type { IconName } from "obsidian";
-import { useId, useLayoutEffect, useRef, useState, type FormEvent, type MouseEvent, type SyntheticEvent } from "react";
-import { ALERT_ROLE, BUTTON_TYPE, SUBMIT_TYPE } from "../../constants/html-attributes";
-import { EMPTY_STRING } from "../../constants/text";
+import { useId, useRef, useState, type FormEvent } from "react";
+import {
+  ALERT_ROLE,
+  BUTTON_TYPE,
+  SUBMIT_TYPE,
+} from "../../constants/html-attributes";
+import { CLOSE_ICON } from "../../constants/icons";
+import { CLOSE_LABEL, EMPTY_STRING } from "../../constants/text";
 import { ActionButton } from "../ActionButton";
 import { Icon } from "../Icon";
 import { ProjectIcon } from "../ProjectIcon";
-import { CLOSE_ICON, COPY } from "./constants";
+import { useTaskDialog } from "../use-task-dialog";
+import { COPY } from "./constants";
 
 export type TaskNameProject = { title: string; emoji?: string };
-type TaskNameSave = (title: string) => Promise<{ ok: true; taskPath: string } | { ok: false; message: string }>;
-const { field, placeholder, cancel, close: closeLabel, saving } = COPY;
+type TaskNameSave = (
+  title: string,
+) => Promise<{ ok: true; taskPath: string } | { ok: false; message: string }>;
+const { field, placeholder, cancel, saving } = COPY;
 
-function isBackdrop({ target, currentTarget, clientX, clientY }: MouseEvent<HTMLDialogElement>) {
-  if (target !== currentTarget) return false;
-  const { left, right, top, bottom } = currentTarget.getBoundingClientRect();
-  return clientX < left || clientX > right || clientY < top || clientY > bottom;
+function moveCaretToEnd(input: HTMLInputElement) {
+  const end = input.value.length;
+  input.setSelectionRange(end, end);
 }
 
 export function TaskNameDialog({
-  project: { title: projectName, emoji }, heading, icon, initialTitle = EMPTY_STRING,
-  submitLabel, failedMessage, readOnly = false, dismissOnBackdrop = false, save, onClose,
+  project: { title: projectName, emoji },
+  heading,
+  icon,
+  initialTitle = EMPTY_STRING,
+  submitLabel,
+  failedMessage,
+  readOnly = false,
+  dismissOnBackdrop = false,
+  save,
+  onClose,
 }: {
   project: TaskNameProject;
   heading: string;
@@ -32,10 +47,17 @@ export function TaskNameDialog({
   save?: TaskNameSave;
   onClose: (taskPath?: string) => void;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
-  const pressedBackdrop = useRef(false);
+  const { close, requestClose, dialogProps } = useTaskDialog(
+    onClose,
+    submitting,
+    nameInput,
+    {
+      dismissOnBackdrop,
+      afterFocus: moveCaretToEnd,
+    },
+  );
   const headingId = useId();
   const messageId = useId();
   const [taskTitle, setTaskTitle] = useState(initialTitle);
@@ -45,42 +67,6 @@ export function TaskNameDialog({
   const messageDescription = message ? messageId : undefined;
   const titleReadOnly = busy || readOnly;
   const submitDisabled = busy || !save;
-
-  useLayoutEffect(() => {
-    const element = dialog.current;
-    if (element && !element.open) {
-      element.showModal();
-      const { current: input } = nameInput;
-      if (input) {
-        const end = input.value.length;
-        input.focus({ preventScroll: true });
-        input.setSelectionRange(end, end);
-      }
-    }
-    return () => (element?.open ? element.close() : undefined);
-  }, []);
-
-  function close(taskPath?: string) {
-    dialog.current?.close();
-    onClose(taskPath);
-  }
-
-  const requestClose = () => (submitting.current ? undefined : close());
-
-  function captureBackdropPress(event: MouseEvent<HTMLDialogElement>) {
-    pressedBackdrop.current = isBackdrop(event);
-  }
-
-  function dismissFromBackdrop(event: MouseEvent<HTMLDialogElement>) {
-    const dismiss = pressedBackdrop.current && isBackdrop(event);
-    pressedBackdrop.current = false;
-    if (dismiss) requestClose();
-  }
-
-  function cancelDialog(event: SyntheticEvent<HTMLDialogElement>) {
-    event.preventDefault();
-    requestClose();
-  }
 
   async function submitTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,20 +91,24 @@ export function TaskNameDialog({
   return (
     <dialog
       className="pfa-create-dialog"
-      ref={dialog}
       aria-labelledby={headingId}
-      onCancel={cancelDialog}
-      onPointerDown={dismissOnBackdrop ? captureBackdropPress : undefined}
-      onClick={dismissOnBackdrop ? dismissFromBackdrop : undefined}
+      {...dialogProps}
     >
       <form onSubmit={submitTask}>
         <header className="pfa-create-heading">
           <Icon name={icon} />
           <h2 id={headingId}>{heading}</h2>
-          <ActionButton label={closeLabel} icon={CLOSE_ICON} onClick={busy ? undefined : requestClose} />
+          <ActionButton
+            label={CLOSE_LABEL}
+            icon={CLOSE_ICON}
+            onClick={busy ? undefined : requestClose}
+          />
         </header>
         <div className="pfa-create-fields">
-          <p className="pfa-create-project"><ProjectIcon emoji={emoji} /><span>{projectName}</span></p>
+          <p className="pfa-create-project">
+            <ProjectIcon emoji={emoji} />
+            <span>{projectName}</span>
+          </p>
           <label>
             <input
               ref={nameInput}
@@ -126,17 +116,36 @@ export function TaskNameDialog({
               placeholder={placeholder}
               aria-describedby={messageDescription}
               readOnly={titleReadOnly}
-              onChange={({ currentTarget }) => setTaskTitle(currentTarget.value)}
+              onChange={({ currentTarget }) =>
+                setTaskTitle(currentTarget.value)
+              }
             />
             <span>{field}</span>
           </label>
-          {message && <p className="pfa-create-error" id={messageId} role={ALERT_ROLE}>{message}</p>}
+          {message && (
+            <p className="pfa-create-error" id={messageId} role={ALERT_ROLE}>
+              {message}
+            </p>
+          )}
         </div>
         <footer className="pfa-create-actions">
           {!dismissOnBackdrop && (
-            <button type={BUTTON_TYPE} className="pfa-control" onClick={requestClose} disabled={busy}>{cancel}</button>
+            <button
+              type={BUTTON_TYPE}
+              className="pfa-control"
+              onClick={requestClose}
+              disabled={busy}
+            >
+              {cancel}
+            </button>
           )}
-          <button type={SUBMIT_TYPE} className="pfa-control" disabled={submitDisabled}>{action}</button>
+          <button
+            type={SUBMIT_TYPE}
+            className="pfa-control"
+            disabled={submitDisabled}
+          >
+            {action}
+          </button>
         </footer>
       </form>
     </dialog>

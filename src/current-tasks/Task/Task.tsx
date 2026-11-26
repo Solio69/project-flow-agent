@@ -16,7 +16,9 @@ const { check, grip, up, down } = ICONS;
 
 export type TaskFromButton = (task: EditableTask, control: HTMLButtonElement) => void;
 
-export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMoveTask, onRenameTask, onReorderByKey, onTaskMarked }: {
+export function Task({
+  task, today, showGrip, onOpenNote, onSetCompleted, onMoveTask, onRenameTask, onTransferTask, onReorderByKey, onTaskMarked,
+}: {
   task: LinkedTask;
   today: boolean;
   showGrip: boolean;
@@ -24,6 +26,7 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMove
   onSetCompleted?: SetCompleted;
   onMoveTask?: TaskFromButton;
   onRenameTask?: TaskFromButton;
+  onTransferTask?: TaskFromButton;
   onReorderByKey?: KeyboardEventHandler<HTMLButtonElement>;
   onTaskMarked: (control: HTMLInputElement) => void;
 }) {
@@ -45,6 +48,9 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMove
     : undefined;
   const rename = editableTask && onRenameTask
     ? (control: HTMLButtonElement) => onRenameTask(editableTask, control)
+    : undefined;
+  const transfer = editableTask && onTransferTask
+    ? (control: HTMLButtonElement) => onTransferTask(editableTask, control)
     : undefined;
 
   function changeCompletion({ currentTarget }: ChangeEvent<HTMLInputElement>) {
@@ -103,7 +109,7 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMove
       </span>
       <div className="pfa-task-actions">
         <ActionButton label={moveLabel} icon={moveIcon} taskPath={notePath} onClick={move} />
-        <TaskActionsMenu label={actionsLabel} onRename={rename} />
+        <TaskActionsMenu label={actionsLabel} onRename={rename} onTransfer={transfer} />
       </div>
     </li>
   );

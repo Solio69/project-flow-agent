@@ -19,13 +19,14 @@ import {
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
   moveAfterComment, moveCases, moveWithDuplicatePeriod, obsoleteTasks, propertyTasks,
-  renameWithAlias, renameWithoutAliasCases, reorderCases, reorderInsideEdgeText, reorderWithEdgeText, taskWithTitlePrefix,
+  renameWithAlias, renameWithoutAliasCases, reorderCases, reorderInsideEdgeText, reorderWithEdgeText, taskWithTitlePrefix, transferTaskCases,
+  transferWithAmbiguousToday, transferWithShortLink,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
   createTaskCase,
   aliasedBlogExpected, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown, iconizeFixture,
   moveFeedback, moveProjectConflict, projectLinkCase, reorderTasks, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
-  activeTaskOrder, existingPluginSettings, renameTaskCase, visibleTaskOrderBeforeWrite, watchFixture,
+  activeTaskOrder, existingPluginSettings, renameTaskCase, transferTaskCase, visibleTaskOrderBeforeWrite, watchFixture,
 } from "./fixtures/scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -42,6 +43,106 @@ const {
 } = currentTasksExpected;
 const { note: projectLinkNote, middleButton, rightButton } = projectLinkCase;
 const config = join(project, buildScript);
+
+test("перенос в другой проект меняет папку и оставляет задачу в нужном списке", async (t) => {
+  const { projectPath, taskPath } = transferTaskCase;
+  const { oldPath, oldTitle, body } = renameTaskCase;
+  for (const { markdown, today, completed, updateLinks } of transferTaskCases) {
+    const { controls, mounts, note, renames } = await openTasksFixture(t, markdown);
+    controls.taskMarkdown = body;
+    controls.updateLinksAfterRename = updateLinks;
+    const { onTransferTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+    const task = groups.flatMap(({ tasks }) => tasks).find(({ notePath }) => notePath === oldPath);
+    const result = await onTransferTask({ task, projectPath });
+    assert.equal(result.ok, true);
+    assert.deepEqual(renames, [taskPath]);
+    assert.equal(note.path, taskPath);
+    assert.equal(controls.taskMarkdown, body);
+    assert.ok(controls.markdown.includes(`[[${taskPath}|${oldTitle}]]`));
+    const { state: { document: { groups: updatedGroups } } } = mounts.at(-1).element.props;
+    const owners = updatedGroups.filter(({ tasks }) => tasks.some(({ notePath }) => notePath === taskPath));
+    assert.equal(owners.length, 1);
+    const [owner] = owners;
+    const updated = owner.tasks.find(({ notePath }) => notePath === taskPath);
+    assert.equal(updated.id, task.id);
+    assert.equal(updated.completed, completed);
+    if (today) {
+      assert.equal(owner.kind, "today");
+      assert.equal(updated.line, task.line);
+      assert.equal(updated.projectPath, projectPath);
+    } else {
+      assert.equal(owner.notePath, projectPath);
+      assert.equal(owner.tasks.at(-1), updated);
+    }
+  }
+});
+
+test("перенос защищает занятый путь и повторяет запись списка с тем же файлом", async (t) => {
+  const { projectPath, taskPath, outsidePeriod, occupied, partial } = transferTaskCase;
+  const { oldPath } = renameTaskCase;
+  const [{ markdown }] = transferTaskCases;
+  const { controls, mounts, note, renames } = await openTasksFixture(t, markdown);
+  const props = () => mounts.at(-1).element.props;
+  const task = props().state.document.groups.flatMap(({ tasks }) => tasks).find(({ notePath }) => notePath === oldPath);
+  const transfer = (pending) => props().onTransferTask({ task, projectPath, pending });
+  assert.equal((await props().onTransferTask({ task, projectPath: outsidePeriod })).ok, false);
+  assert.deepEqual(renames, []);
+  controls.unindexedPaths = [taskPath];
+  assert.match((await transfer()).message, occupied);
+  assert.equal(note.path, oldPath);
+  controls.unindexedPaths = [];
+  controls.updateLinksAfterRename = false;
+  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  const missed = await transfer();
+  assert.match(missed.message, partial);
+  assert.equal(note.path, taskPath);
+  controls.beforeProcess = undefined;
+  assert.equal((await transfer(missed.pending)).ok, true);
+  assert.equal((await transfer(missed.pending)).ok, true);
+  assert.ok(controls.markdown.endsWith(externalListEdit));
+  assert.deepEqual(renames, [taskPath]);
+});
+
+test("перенос не переписывает короткую ссылку, сменившую цель перед записью", async (t) => {
+  const { projectPath, taskPath, partial } = transferTaskCase;
+  const { controls, emitModify, mounts, note, replacementNote, renames, writes } = await openTasksFixture(t, transferWithShortLink);
+  const current = () => mounts.at(-1).element.props;
+  const { state: { document: { groups } } } = current();
+  const [task] = groups.flatMap(({ tasks }) => tasks);
+  const transfer = (pending) => current().onTransferTask({ task, projectPath, pending });
+  controls.updateLinksAfterRename = false;
+  controls.beforeProcess = () => { controls.shortLinkDestination = replacementNote; };
+
+  const result = await transfer();
+  assert.equal(result.ok, false);
+  assert.match(result.message, partial);
+  assert.equal(note.path, taskPath);
+  assert.equal(controls.markdown, transferWithShortLink);
+  assert.deepEqual(writes, []);
+
+  controls.beforeProcess = undefined;
+  controls.shortLinkDestination = null;
+  await emitModify();
+  assert.equal((await transfer(result.pending)).ok, true);
+  assert.equal(writes.length, 1);
+  assert.deepEqual(renames, [taskPath]);
+});
+
+test("перенос из «Сегодня» отклоняет неоднозначную строку до записи", async (t) => {
+  const { projectPath } = transferTaskCase;
+  const { oldPath } = renameTaskCase;
+  const { controls, mounts, note, renames, writes } = await openTasksFixture(t, transferWithAmbiguousToday);
+  const { onTransferTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+  const [task] = groups.flatMap(({ tasks }) => tasks);
+
+  const result = await onTransferTask({ task, projectPath });
+  assert.equal(result.ok, false);
+  assert.match(result.message, completionFeedback.ambiguous);
+  assert.equal(note.path, oldPath);
+  assert.equal(controls.markdown, transferWithAmbiguousToday);
+  assert.deepEqual(renames, []);
+  assert.deepEqual(writes, []);
+});
 
 async function removeFixture(directory, parent = tmpdir()) {
   const resolved = await realpath(directory);
