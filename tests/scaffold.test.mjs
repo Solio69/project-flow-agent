@@ -791,7 +791,7 @@ test("дубль свойства периода оставляет просмо
 test("переключатель называет следующее действие с выполненными задачами", async () => {
   const { outputFiles: [bundle] } = await build({
     absWorkingDir: project,
-    entryPoints: ["src/current-tasks/TasksToolbar/index.ts"],
+    entryPoints: ["src/pages/current-tasks/ui/TasksToolbar/index.ts"],
     bundle: true,
     format: "cjs",
     external: ["obsidian", "react"],
@@ -1086,7 +1086,7 @@ test("ссылки учитывают закрепление, модификат
 test("нажатие колёсиком по ссылке открывает новую вкладку", async () => {
   const { outputFiles: [bundle] } = await build({
     absWorkingDir: project,
-    entryPoints: ["src/current-tasks/NoteLink/index.ts"],
+    entryPoints: ["src/pages/current-tasks/ui/NoteLink/index.ts"],
     bundle: true,
     format: "cjs",
     external: ["react/jsx-runtime"],

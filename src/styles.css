@@ -1,8 +1,1 @@
-@import "./current-tasks/CurrentTasks/CurrentTasks.css";
-@import "./current-tasks/TaskNameDialog/TaskNameDialog.css";
-@import "./current-tasks/TasksToolbar/TasksToolbar.css";
-@import "./current-tasks/TasksList/TasksList.css";
-@import "./current-tasks/TaskPanel/TaskPanel.css";
-@import "./current-tasks/Task/Task.css";
-@import "./current-tasks/TaskActionsMenu/TaskActionsMenu.css";
-@import "./current-tasks/TaskTransferDialog/TaskTransferDialog.css";
+@import "./app/styles.css";

@@ -15,7 +15,7 @@ import {
 const require = createRequire(import.meta.url);
 const { outputFiles: [bundle] } = await build({
   absWorkingDir: fileURLToPath(new URL("../", import.meta.url)),
-  entryPoints: ["src/current-tasks/parse-current-tasks.ts"],
+  entryPoints: ["src/pages/current-tasks/model/parse-current-tasks.ts"],
   bundle: true,
   external: ["zod"],
   platform: "node",

@@ -181,5 +181,5 @@ export const watchFixture = {
   expectedThemeVariable: /--text-muted/,
   originalHeadingContent: "<NoteLink note={sourceNote} onOpenNote={onOpenSource} />",
   probe: "pfa-watch-probe",
-  componentPath: ["src", "current-tasks", "CurrentTasks", "CurrentTasks.tsx"],
+  componentPath: ["src", "pages", "current-tasks", "ui", "CurrentTasks", "CurrentTasks.tsx"],
 };
