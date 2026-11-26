@@ -4,7 +4,7 @@ import { TaskNameDialog, type TaskNameProject } from "../TaskNameDialog";
 import type { EditableTask } from "../task-edit";
 import { TASK_RENAME_COPY, TASK_RENAME_ICON, TASK_RENAME_TITLE, type RenameTask } from "../task-rename";
 
-const { failed, save: saveLabel } = TASK_RENAME_COPY;
+const { failed } = TASK_RENAME_COPY;
 
 export type RenameSelection = { task: EditableTask; project: TaskNameProject; sourceMarkdown: string };
 export type RequestRenameTask = (task: EditableTask, project: TaskNameProject, control: HTMLButtonElement) => void;
@@ -31,9 +31,7 @@ export function RenameTaskDialog({ selection: { task, project, sourceMarkdown },
       heading={TASK_RENAME_TITLE}
       icon={TASK_RENAME_ICON}
       initialTitle={noteName(notePath)}
-      submitLabel={saveLabel}
       failedMessage={failed}
-      dismissOnBackdrop
       save={save}
       onClose={onClose}
     />

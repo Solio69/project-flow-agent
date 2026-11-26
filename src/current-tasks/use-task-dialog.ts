@@ -1,10 +1,5 @@
 import { useLayoutEffect, useRef, type MouseEvent, type RefObject, type SyntheticEvent } from "react";
 
-type TaskDialogOptions = {
-  dismissOnBackdrop?: boolean;
-  afterFocus?: (input: HTMLInputElement) => void;
-};
-
 function isDialogBackdrop({ target, currentTarget, clientX, clientY }: MouseEvent<HTMLDialogElement>) {
   if (target !== currentTarget) return false;
   const { left, right, top, bottom } = currentTarget.getBoundingClientRect();
@@ -15,7 +10,7 @@ export function useTaskDialog<Result>(
   onClose: (result?: Result) => void,
   submitting: RefObject<boolean>,
   initialFocus: RefObject<HTMLInputElement | null>,
-  { dismissOnBackdrop = true, afterFocus }: TaskDialogOptions = {},
+  afterFocus?: (input: HTMLInputElement) => void,
 ) {
   const dialog = useRef<HTMLDialogElement>(null);
   const pressedBackdrop = useRef(false);
@@ -63,8 +58,8 @@ export function useTaskDialog<Result>(
     dialogProps: {
       ref: dialog,
       onCancel: cancelDialog,
-      onPointerDown: dismissOnBackdrop ? captureBackdropPress : undefined,
-      onClick: dismissOnBackdrop ? dismissFromBackdrop : undefined,
+      onPointerDown: captureBackdropPress,
+      onClick: dismissFromBackdrop,
     },
   };
 }

@@ -936,8 +936,7 @@
           <input name="taskName" type="text" value="${html(task?.title || "")}" placeholder="Например, сверить список">
           <span>Название задачи</span>
         </label>`,
-      label: task ? "Сохранить" : "Создать",
-      dismissOnBackdrop: Boolean(task),
+      dismissOnBackdrop: true,
       source,
       onSubmit(values) {
         const name = values.get("taskName");

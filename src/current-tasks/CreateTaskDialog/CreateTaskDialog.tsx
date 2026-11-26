@@ -6,7 +6,7 @@ import { CREATE_FORM_COPY } from "./constants";
 
 export type CreateTaskProject = TaskNameProject & { path: string };
 export type RequestCreateTask = (project: CreateTaskProject, control: HTMLButtonElement) => void;
-const { submit, retry } = CREATE_FORM_COPY;
+const { retry } = CREATE_FORM_COPY;
 const { failed } = TASK_CREATE_COPY;
 
 export function CreateTaskDialog({ project, createTask, onClose }: {
@@ -30,7 +30,7 @@ export function CreateTaskDialog({ project, createTask, onClose }: {
       project={project}
       heading={TASK_CREATE_TITLE}
       icon={PLUS_ICON}
-      submitLabel={pending ? retry : submit}
+      submitLabel={pending ? retry : undefined}
       failedMessage={failed}
       readOnly={Boolean(pending)}
       save={save}

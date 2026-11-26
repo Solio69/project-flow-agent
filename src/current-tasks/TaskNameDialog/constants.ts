@@ -1,6 +1,6 @@
 export const COPY = {
   field: "Название задачи",
   placeholder: "Например, сверить список",
-  cancel: "Отмена",
+  save: "Сохранить",
   saving: "Сохраняю…",
 } as const;

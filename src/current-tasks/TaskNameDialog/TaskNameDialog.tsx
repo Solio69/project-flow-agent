@@ -1,10 +1,6 @@
 import type { IconName } from "obsidian";
 import { useId, useRef, useState, type FormEvent } from "react";
-import {
-  ALERT_ROLE,
-  BUTTON_TYPE,
-  SUBMIT_TYPE,
-} from "../../constants/html-attributes";
+import { ALERT_ROLE, SUBMIT_TYPE } from "../../constants/html-attributes";
 import { CLOSE_ICON } from "../../constants/icons";
 import { CLOSE_LABEL, EMPTY_STRING } from "../../constants/text";
 import { ActionButton } from "../ActionButton";
@@ -17,7 +13,7 @@ export type TaskNameProject = { title: string; emoji?: string };
 type TaskNameSave = (
   title: string,
 ) => Promise<{ ok: true; taskPath: string } | { ok: false; message: string }>;
-const { field, placeholder, cancel, saving } = COPY;
+const { field, placeholder, save: saveLabel, saving } = COPY;
 
 function moveCaretToEnd(input: HTMLInputElement) {
   const end = input.value.length;
@@ -29,10 +25,9 @@ export function TaskNameDialog({
   heading,
   icon,
   initialTitle = EMPTY_STRING,
-  submitLabel,
+  submitLabel = saveLabel,
   failedMessage,
   readOnly = false,
-  dismissOnBackdrop = false,
   save,
   onClose,
 }: {
@@ -40,10 +35,9 @@ export function TaskNameDialog({
   heading: string;
   icon: IconName;
   initialTitle?: string;
-  submitLabel: string;
+  submitLabel?: string;
   failedMessage: string;
   readOnly?: boolean;
-  dismissOnBackdrop?: boolean;
   save?: TaskNameSave;
   onClose: (taskPath?: string) => void;
 }) {
@@ -53,10 +47,7 @@ export function TaskNameDialog({
     onClose,
     submitting,
     nameInput,
-    {
-      dismissOnBackdrop,
-      afterFocus: moveCaretToEnd,
-    },
+    moveCaretToEnd,
   );
   const headingId = useId();
   const messageId = useId();
@@ -129,16 +120,6 @@ export function TaskNameDialog({
           )}
         </div>
         <footer className="pfa-create-actions">
-          {!dismissOnBackdrop && (
-            <button
-              type={BUTTON_TYPE}
-              className="pfa-control"
-              onClick={requestClose}
-              disabled={busy}
-            >
-              {cancel}
-            </button>
-          )}
           <button
             type={SUBMIT_TYPE}
             className="pfa-control"
