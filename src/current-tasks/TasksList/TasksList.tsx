@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { SPACE } from "../../constants/text";
+import type { RequestCreateTask } from "../CreateTaskDialog";
 import type { OpenNote } from "../NoteLink";
 import type { MoveTaskFromButton } from "../Task";
 import { TaskPanel } from "../TaskPanel";
@@ -7,7 +8,9 @@ import { TasksToolbar } from "../TasksToolbar";
 import { LIST_KEY_SEPARATOR } from "../current-tasks.constants";
 import type { LinkedTaskGroup, TasksSnapshot } from "../obsidian-current-tasks";
 import type { SetCompleted } from "../task-completion";
+import type { ReorderTask } from "../task-reorder";
 import { canRestoreTaskFocus, focusTaskControl, hasTaskControlFocus } from "../task-focus";
+import { PANEL_DISCLOSURE_SELECTOR, TASK_PANEL_SELECTOR } from "../task-focus.constants";
 import { isTodayGroup } from "../task-group";
 import type { MoveTask } from "../task-move";
 import type { ActionDiagnostic } from "../types";
@@ -15,9 +18,7 @@ import {
   COPY,
   DIAGNOSTIC_LABEL_SUFFIX,
   EMPTY_TODAY,
-  PANEL_DISCLOSURE_SELECTOR,
   TASK_MOVE_CONTROL_SELECTOR,
-  TASK_PANEL_SELECTOR,
 } from "./constants";
 
 const { diagnosticsTitle, lineLabel } = COPY;
@@ -43,6 +44,8 @@ export function TasksList({
   onOpenNote,
   onSetCompleted,
   onMoveTask,
+  onReorderTask,
+  onRequestCreateTask,
 }: {
   document: TasksSnapshot;
   showCompleted: boolean;
@@ -50,6 +53,8 @@ export function TasksList({
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
   onMoveTask?: MoveTask;
+  onReorderTask?: ReorderTask;
+  onRequestCreateTask?: RequestCreateTask;
 }) {
   const { period, groups, diagnostics } = document;
   const completedToggleRef = useRef<HTMLButtonElement>(null);
@@ -128,6 +133,8 @@ export function TasksList({
           onOpenNote={onOpenNote}
           onSetCompleted={onSetCompleted}
           onMoveTask={moveFromButton}
+          onReorderTask={onReorderTask}
+          onRequestCreateTask={onRequestCreateTask}
         />
       );
     });

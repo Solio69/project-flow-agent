@@ -4,9 +4,10 @@ import { MIDDLE_MOUSE_BUTTON } from "./constants";
 
 export type OpenNote = (link: string, forceNewTab?: boolean) => Promise<void>;
 
-export function NoteLink({ note, onOpenNote }: {
+export function NoteLink({ note, onOpenNote, draggable }: {
   note: { title: string; link?: string; notePath?: string };
   onOpenNote: OpenNote;
+  draggable?: boolean;
 }) {
   const { title, link, notePath } = note;
   if (!link || !notePath) return title;
@@ -29,6 +30,7 @@ export function NoteLink({ note, onOpenNote }: {
   return (
     <a
       href={href}
+      draggable={draggable}
       onClick={handleClick}
       onAuxClick={handleAuxClick}
     >{title}</a>

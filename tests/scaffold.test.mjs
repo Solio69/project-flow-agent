@@ -14,15 +14,18 @@ import { build } from "esbuild";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createCurrentTasksFixture } from "./fixtures/current-tasks.mjs";
 import {
+  createTaskAlreadyToday, createTaskMarkdown, danglingCreateTaskMarkdown, danglingHeadingTaskMarkdown,
   aliasedBlogTasks, ambiguousCompletion, ambiguousMoveCases, completedBeforeAnnotation, completedMove, completionAcrossAnnotation, completionAlongsideAnnotation,
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
   moveAfterComment, moveCases, moveWithDuplicatePeriod, obsoleteTasks, propertyTasks,
+  reorderCases, reorderInsideEdgeText, reorderWithEdgeText,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
-  aliasedBlogExpected, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown,
-  moveFeedback, moveProjectConflict, projectLinkCase, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
-  visibleTaskOrderBeforeWrite, watchFixture,
+  createTaskCase,
+  aliasedBlogExpected, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown, iconizeFixture,
+  moveFeedback, moveProjectConflict, projectLinkCase, reorderTasks, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
+  activeTaskOrder, existingPluginSettings, visibleTaskOrderBeforeWrite, watchFixture,
 } from "./fixtures/scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -201,14 +204,232 @@ async function openTasksFixture(t, markdown) {
   return fixture;
 }
 
-function moveShownTask(mounts, taskTitle = moveFeedback.title) {
-  const { onMoveTask, state: { document } } = mounts.at(-1).element.props;
-  const tasks = document.groups.flatMap(({ tasks }) => tasks);
-  const task = tasks.find(({ title }) => title === taskTitle);
+test("заголовок открывает точный источник в новой вкладке", async (t) => {
+  const fixture = await openTasksFixture(t, propertyTasks);
+  const { controls, emitModify, mounts, leaves, openedNotes, notices, renamedSource, workspace } = fixture;
+  const viewLeaf = fixture.activeLeaf;
+  t.after(() => workspace.revealLeaf(viewLeaf));
+
+  const firstRender = mounts.at(-1);
+  assert.match(firstRender.markup, currentTasksExpected.linkedSourceHeading);
+  await firstRender.element.props.onOpenSource();
+  assert.equal(openedNotes.at(-1), sourceNotePaths.legacy);
+  assert.equal(fixture.activeLeaf, leaves[1]);
+
+  await workspace.revealLeaf(viewLeaf);
+  controls.renamedSourceAvailable = true;
+  await emitModify(renamedSource);
+  const newRender = mounts.at(-1);
+  viewLeaf.pinned = true;
+  await newRender.element.props.onOpenSource();
+  assert.equal(openedNotes.at(-1), sourceNotePaths.renamed);
+  assert.equal(fixture.activeLeaf, leaves[2]);
+
+  await workspace.revealLeaf(viewLeaf);
+  controls.failNextNoteOpen = true;
+  await newRender.element.props.onOpenSource();
+  assert.equal(leaves.length, 3);
+  assert.equal(notices.at(-1), noteOpenFailed);
+});
+
+test("создание добавляет новый файл и строку в конец активных", async (t) => {
+  const { mounts, controls, createdNotes, writes } = await openTasksFixture(t, createTaskMarkdown);
+  const { title, invalidTitle, duplicateTitle, projectPath, notePath, row, note, action } = createTaskCase;
+  const { markup, element } = mounts.at(-1);
+  assert.match(markup, action);
+  const create = (value) => mounts.at(-1).element.props.onCreateTask({ title: value, projectPath });
+  assert.equal(typeof element.props.onCreateTask, "function");
+  assert.equal((await create(invalidTitle)).ok, false);
+  assert.equal((await create(duplicateTitle)).ok, false);
+  assert.equal(createdNotes.size, 0);
+  assert.deepEqual(writes, []);
+
+  assert.deepEqual({ ...await create(title) }, { ok: true, taskPath: notePath });
+  assert.match(createdNotes.get(notePath).markdown, note);
+  const activeGroup = mounts.at(-1).element.props.state.document.groups.find(({ notePath }) => notePath === projectPath);
+  assert.equal(activeGroup.tasks[1].title, title);
+  assert.equal(activeGroup.tasks[1].completed, false);
+  assert.equal(activeGroup.tasks[2].completed, true);
+  assert.ok(controls.markdown.includes(row));
+  assert.equal(writes.length, 1);
+});
+
+test("частичный сбой создания допускает добавление того же файла и ID", async (t) => {
+  const { mounts, controls, writes, createdNotes } = await openTasksFixture(t, createTaskMarkdown);
+  const { title, projectPath, notePath, row } = createTaskCase;
+  const create = (pending) => mounts.at(-1).element.props.onCreateTask({ title, projectPath, pending });
+  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  const result = await create();
+  assert.equal(result.ok, false);
+  assert.equal(result.pending.path, notePath);
+  assert.equal(createdNotes.size, 1);
+  assert.equal(controls.markdown, createTaskMarkdown + externalListEdit);
+  const { markdown } = createdNotes.get(notePath);
+  assert.deepEqual(writes, []);
+
+  controls.beforeProcess = undefined;
+  assert.deepEqual({ ...await create(result.pending) }, { ok: true, taskPath: notePath });
+  assert.deepEqual({ ...await create(result.pending) }, { ok: true, taskPath: notePath });
+  assert.equal(createdNotes.get(notePath).markdown, markdown);
+  assert.equal(writes.length, 1);
+  assert.equal(controls.markdown.split(row).length, 2);
+});
+
+test("создание останавливается при уже существующей неразрешённой ссылке", async (t) => {
+  const { mounts, createdNotes, writes } = await openTasksFixture(t, danglingCreateTaskMarkdown);
+  const { title, projectPath } = createTaskCase;
+  const result = await mounts.at(-1).element.props.onCreateTask({ title, projectPath });
+  assert.equal(result.ok, false);
+  assert.equal(createdNotes.size, 0);
+  assert.deepEqual(writes, []);
+});
+
+test("создание сверяет проект перед созданием заметки после чтения исходника", async (t) => {
+  const { mounts, controls, createdNotes, writes, projectNote } = await openTasksFixture(t, createTaskMarkdown);
+  const { title, projectPath, redirectedProjectPath } = createTaskCase;
+  controls.beforeReadSource = () => { projectNote.path = redirectedProjectPath; };
+  const { onCreateTask } = mounts.at(-1).element.props;
+  const result = await onCreateTask({ title, projectPath });
+  assert.equal(result.ok, false);
+  assert.equal(result.pending, undefined);
+  assert.equal(createdNotes.size, 0);
+  assert.deepEqual(writes, []);
+});
+
+test("повтор сохраняет частичный результат, если созданный файл уже в другой группе", async (t) => {
+  const { mounts, controls, emitModify, createdNotes, writes } = await openTasksFixture(t, createTaskMarkdown);
+  const { title, projectPath } = createTaskCase;
+  const create = (pending) => mounts.at(-1).element.props.onCreateTask({ title, projectPath, pending });
+  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  const { pending } = await create();
+  assert.ok(pending);
+
+  controls.beforeProcess = undefined;
+  controls.markdown = createTaskAlreadyToday;
+  await emitModify();
+  const retry = await create(pending);
+  assert.equal(retry.ok, false);
+  assert.deepEqual(retry.pending, pending);
+  assert.match(retry.message, completionFeedback.duplicate);
+  assert.deepEqual(writes, []);
+  assert.equal(createdNotes.size, 1);
+});
+
+test("создание учитывает неразрешённую ссылку на заголовок той же заметки", async (t) => {
+  const { mounts, createdNotes, writes } = await openTasksFixture(t, danglingHeadingTaskMarkdown);
+  const { title, projectPath } = createTaskCase;
+  const { onCreateTask } = mounts.at(-1).element.props;
+  const result = await onCreateTask({ title, projectPath });
+  assert.equal(result.ok, false);
+  assert.match(result.message, completionFeedback.duplicate);
+  assert.deepEqual(writes, []);
+  assert.equal(createdNotes.size, 0);
+});
+
+test("настроенный значок проекта виден в карточке и в «Сегодня»", async (t) => {
+  const { controls, mounts, emitModify } = await openTasksFixture(t, completionCases[0].unchecked);
+  const { projectIcons, emojiMatches, fallbackMatches } = iconizeFixture;
+  controls.iconize = projectIcons;
+  await emitModify();
+  assert.equal([...mounts.at(-1).markup.matchAll(emojiMatches)].length, 2);
+
+  controls.iconize = undefined;
+  await emitModify();
+  assert.equal([...mounts.at(-1).markup.matchAll(fallbackMatches)].length, 2);
+});
+
+test("значок проекта в корне игнорирует настройки несвязанного пути", async (t) => {
+  const { controls, mounts, emitModify, projectNote } = await openTasksFixture(t, createTaskMarkdown);
+  const { rootNote: { path, unrelated, emoji }, fallbackMatches } = iconizeFixture;
+  projectNote.path = path;
+  controls.iconize = unrelated;
+  await emitModify();
+  const { markup } = mounts.at(-1);
+  assert.doesNotMatch(markup, emoji);
+  assert.match(markup, fallbackMatches);
+});
+
+function findShownTask(groups, taskTitle) {
+  const task = groups.flatMap(({ tasks }) => tasks).find(({ title }) => title === taskTitle);
   assert.ok(task);
+  return task;
+}
+
+function moveShownTask(mounts, taskTitle = moveFeedback.title) {
+  const { onMoveTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+  const task = findShownTask(groups, taskTitle);
   assert.equal(typeof onMoveTask, "function", "вкладка подключает команду переноса");
   return () => onMoveTask(task);
 }
+
+function reorderShownTask(mounts, destinationTitle, sourceTitle = reorderTasks.first) {
+  const { onReorderTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+  const source = findShownTask(groups, sourceTitle);
+  const { line } = findShownTask(groups, destinationTitle);
+  assert.equal(typeof onReorderTask, "function", "вкладка подключает перестановку активных задач");
+  return onReorderTask(source, line);
+}
+
+test("перестановка сохраняет активный порядок «Сегодня» и проекта после переоткрытия", async (t) => {
+  const { first, last, expectedOrder } = reorderTasks;
+  for (const { initial, reordered } of reorderCases) {
+    const fixture = await openTasksFixture(t, initial);
+    const { mounts, writes, leaves, ribbonClick } = fixture;
+    await reorderShownTask(mounts, first);
+    assert.deepEqual(writes, []);
+    await reorderShownTask(mounts, last);
+    assert.deepEqual(writes, [reordered]);
+
+    await fixture.activeLeaf.view.onClose();
+    leaves.pop();
+    await ribbonClick();
+    const { state: { document: { groups: [{ tasks }] } } } = mounts.at(-1).element.props;
+    assert.deepEqual(Array.from(tasks, ({ title }) => title), expectedOrder);
+  }
+});
+
+test("перестановка отвергает другую группу, выполненную задачу, комментарий и внешний конфликт", async (t) => {
+  const { initial, annotated } = reorderCases[0];
+  const { otherGroup, completed, second } = reorderTasks;
+  const { mounts, notices, controls, writes, emitModify } = await openTasksFixture(t, initial);
+  await reorderShownTask(mounts, otherGroup);
+  await reorderShownTask(mounts, completed);
+  assert.equal(controls.markdown, initial);
+
+  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  await reorderShownTask(mounts, second);
+  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.match(notices.at(-1), completionFeedback.conflict);
+
+  controls.beforeProcess = undefined;
+  controls.markdown = annotated;
+  await emitModify();
+  await reorderShownTask(mounts, second);
+  assert.equal(controls.markdown, annotated);
+  assert.match(notices.at(-1), moveFeedback.annotation);
+  assert.deepEqual(writes, []);
+});
+
+test("перестановка сохраняет соседство комментариев на краях блока", async (t) => {
+  const { second } = reorderTasks;
+  for (const { title, markdown } of reorderWithEdgeText) {
+    await t.test(title, async (subtest) => {
+      const { mounts, notices, controls, writes } = await openTasksFixture(subtest, markdown);
+      await reorderShownTask(mounts, second);
+      assert.deepEqual(writes, []);
+      assert.equal(controls.markdown, markdown);
+      assert.match(notices.at(-1), moveFeedback.annotation);
+    });
+  }
+});
+
+test("комментарии на краях не мешают перестановке внутри блока", async (t) => {
+  const { initial, reordered } = reorderInsideEdgeText;
+  const { last, second } = reorderTasks;
+  const { mounts, writes } = await openTasksFixture(t, initial);
+  await reorderShownTask(mounts, last, second);
+  assert.deepEqual(writes, [reordered]);
+});
 
 test("активная задача переносится в «Сегодня» по проекту и возвращается в начало проекта", async (t) => {
   for (const { initial, moved, returned } of moveCases) {
@@ -356,6 +577,53 @@ test("выполненные видны по умолчанию после ак�
   const labels = [...markup.matchAll(taskCheckboxLabel)].map(([, title]) => title);
   assert.deepEqual(labels, visibleTaskOrderBeforeWrite);
   assert.deepEqual(writes, []);
+});
+
+test("видимость выполненных восстанавливается после перезапуска плагина", async () => {
+  const [[markdown]] = completionOrderCases;
+  const settings = { data: existingPluginSettings };
+  const openWithSavedSettings = async () => {
+    const fixture = await createCurrentTasksFixture({ settings });
+    const { activeLeaf, controls, mounts, ribbonClick, writes } = fixture;
+    controls.markdown = markdown;
+    await ribbonClick();
+    const { markup, element: { props } } = mounts.at(-1);
+    const labels = [...markup.matchAll(taskCheckboxLabel)].map(([, title]) => title);
+    return { fixture, markup, labels, visibility: props.completedVisibility, writes };
+  };
+
+  const initial = await openWithSavedSettings();
+  assert.match(initial.markup, tasksDesign.hideCompleted);
+  assert.deepEqual(initial.labels, activeTaskOrder);
+
+  const firstSaveStarted = Promise.withResolvers();
+  const finishFirstSave = Promise.withResolvers();
+  settings.beforeSave = ({ showCompleted }) => {
+    if (!showCompleted) return;
+    firstSaveStarted.resolve();
+    return finishFirstSave.promise;
+  };
+  const show = initial.visibility.set(true);
+  await firstSaveStarted.promise;
+  const hide = initial.visibility.set(false);
+  finishFirstSave.resolve();
+  await Promise.all([show, hide]);
+  await initial.fixture.activeLeaf.view.onClose();
+
+  const hidden = await openWithSavedSettings();
+  assert.match(hidden.markup, tasksDesign.hideCompleted);
+  assert.deepEqual(hidden.labels, activeTaskOrder);
+  assert.deepEqual(settings.data, existingPluginSettings);
+  settings.beforeSave = undefined;
+  await hidden.visibility.set(true);
+  await hidden.fixture.activeLeaf.view.onClose();
+
+  const visible = await openWithSavedSettings();
+  assert.match(visible.markup, tasksDesign.showCompleted);
+  assert.deepEqual(visible.labels, visibleTaskOrderBeforeWrite);
+  assert.deepEqual(settings.data, { ...existingPluginSettings, showCompleted: true });
+  assert.deepEqual([...initial.writes, ...hidden.writes, ...visible.writes], []);
+  await visible.fixture.activeLeaf.view.onClose();
 });
 
 test("галочка сохраняет текст между задачами и блокирует перестановку через него", async (t) => {

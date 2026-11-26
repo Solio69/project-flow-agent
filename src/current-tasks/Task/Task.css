@@ -22,8 +22,13 @@
   border-radius: 0 0 13px 13px;
 }
 
-.pfa-current-tasks .pfa-task:is(:hover, :focus-within) {
+.pfa-current-tasks .pfa-task:has(:focus-visible),
+.pfa-current-tasks .pfa-task-list:not(.is-reordering, [data-hover-paused]) > .pfa-task:hover {
   background: color-mix(in srgb, var(--pfa-panel-color) 16%, var(--pfa-task-surface));
+}
+
+.pfa-current-tasks .pfa-task-list:is(.is-reordering, [data-hover-paused]) .pfa-task-title a:hover:not(:focus-visible) {
+  text-decoration: none;
 }
 
 .pfa-current-tasks .pfa-task-grip {
@@ -31,6 +36,28 @@
   place-items: center;
   color: var(--pfa-caption);
   opacity: 0.6;
+}
+
+.pfa-current-tasks button.pfa-task-grip {
+  inline-size: 100%;
+  block-size: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+  touch-action: none;
+}
+
+.pfa-current-tasks button.pfa-task-grip[aria-disabled="false"] { cursor: grab; }
+.pfa-current-tasks button.pfa-task-grip:focus-visible,
+.pfa-current-tasks .pfa-task-list:not(.is-reordering, [data-hover-paused]) button.pfa-task-grip:hover {
+  opacity: 1;
+  background: transparent;
+}
+.pfa-current-tasks button.pfa-task-grip:focus-visible {
+  outline: 2px solid var(--pfa-focus);
+  outline-offset: 1px;
 }
 
 .pfa-current-tasks .pfa-task-mark {
@@ -78,8 +105,12 @@
   overflow-wrap: anywhere;
 }
 
-.pfa-current-tasks .pfa-task-label .pfa-project-emoji {
+.pfa-current-tasks .pfa-task-label :is(.pfa-project-emoji, .pfa-project-icon) {
   margin-inline-end: 6px;
+}
+
+.pfa-current-tasks .pfa-task-label .pfa-project-icon > .pfa-icon {
+  vertical-align: text-bottom;
 }
 
 .pfa-current-tasks .pfa-task-project {

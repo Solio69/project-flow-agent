@@ -34,6 +34,45 @@
   border-radius: 13px;
 }
 
+.pfa-current-tasks .pfa-panel-content { position: relative; }
+
+.pfa-current-tasks .pfa-task-list.is-reordering {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.pfa-current-tasks .pfa-task.pfa-drag-gap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pfa-current-tasks .pfa-drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.pfa-current-tasks .pfa-task.pfa-drag-ghost {
+  position: absolute;
+  inset-inline: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--pfa-border);
+  border-radius: 8px;
+  background: var(--pfa-task-surface);
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--pfa-ui-accent) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pfa-current-tasks .is-reordering > .pfa-task {
+    transition: transform 150ms cubic-bezier(.2, .7, .25, 1);
+  }
+}
+
+
 .pfa-current-tasks .pfa-panel-heading h3 {
   flex: 1;
   min-inline-size: 0;

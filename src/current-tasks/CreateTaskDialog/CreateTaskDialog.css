@@ -1,0 +1,103 @@
+.pfa-current-tasks .pfa-create-dialog {
+  --pfa-create-input-surface: var(--pfa-task-surface);
+  --pfa-create-input-border: #d8cae5;
+  --pfa-create-focus-accent: #b99fdd;
+  --pfa-create-overlay: #382d4526;
+  --pfa-create-shadow: #382d4529;
+  inline-size: min(430px, calc(100% - 28px));
+  max-block-size: calc(100% - 24px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--pfa-border);
+  border-radius: 16px;
+  background: var(--pfa-task-surface);
+  color: var(--pfa-text);
+  box-shadow: 0 12px 36px var(--pfa-create-shadow);
+}
+
+.theme-dark .pfa-current-tasks .pfa-create-dialog {
+  --pfa-create-input-surface: var(--pfa-bg);
+  --pfa-create-input-border: #667286;
+  --pfa-create-focus-accent: #b48ead;
+  --pfa-create-overlay: #10141a80;
+  --pfa-create-shadow: #10141a99;
+}
+
+.pfa-current-tasks .pfa-create-dialog::backdrop {
+  background: var(--pfa-create-overlay);
+}
+
+.pfa-current-tasks .pfa-create-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 14px;
+  border-block-end: 1px solid var(--pfa-border);
+  background: var(--pfa-bg);
+}
+
+.pfa-current-tasks .pfa-create-heading h2 {
+  flex: 1;
+  color: inherit;
+  font-size: 16px;
+}
+
+.pfa-current-tasks .pfa-create-fields {
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+}
+
+.pfa-current-tasks .pfa-create-fields label {
+  display: grid;
+  gap: 4px;
+  margin-block-start: 4px;
+  color: var(--pfa-caption);
+  font-size: 12px;
+}
+
+.pfa-current-tasks .pfa-create-fields input {
+  min-inline-size: 0;
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding: 6px 9px;
+  border: 1px solid var(--pfa-create-input-border);
+  border-radius: 8px;
+  background: var(--pfa-create-input-surface);
+  color: var(--pfa-text);
+  font-size: 16px;
+}
+
+.theme-dark .pfa-current-tasks .pfa-create-fields input::placeholder {
+  color: var(--pfa-muted);
+  opacity: 1;
+}
+
+.pfa-current-tasks .pfa-create-fields input:focus {
+  border-color: color-mix(in srgb, var(--pfa-create-focus-accent) 38%, var(--pfa-surface));
+  outline: none;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--pfa-create-focus-accent) 24%, transparent);
+}
+
+@media (forced-colors: active) {
+  .pfa-current-tasks .pfa-create-fields input:focus { outline: 2px solid Highlight; }
+}
+
+.pfa-current-tasks .pfa-create-project {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.pfa-current-tasks .pfa-create-error {
+  color: var(--text-error, var(--pfa-text));
+}
+
+.pfa-current-tasks .pfa-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px 12px;
+}

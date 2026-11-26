@@ -5,10 +5,12 @@ export type LinkedTask = CurrentTask & {
   id?: string;
   project?: string;
   projectPath?: string;
+  projectEmoji?: string;
 };
 
 export interface LinkedTaskGroup extends CurrentTaskGroup<LinkedTask> {
   notePath?: string;
+  projectEmoji?: string;
 }
 
 export interface TasksSnapshot extends CurrentTasksDocument<LinkedTaskGroup> {

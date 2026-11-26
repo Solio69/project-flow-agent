@@ -1,19 +1,25 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState, type MouseEventHandler } from "react";
 import { BUTTON_TYPE, TRUE_STRING } from "../../constants/html-attributes";
+import { PLUS_ICON } from "../../constants/icons";
 import { LABEL_SEPARATOR } from "../../constants/text";
 import { ActionButton } from "../ActionButton";
+import type { RequestCreateTask } from "../CreateTaskDialog";
 import { Icon } from "../Icon";
 import { NoteLink, type OpenNote } from "../NoteLink";
+import { ProjectIcon } from "../ProjectIcon";
 import { Task, type MoveTaskFromButton } from "../Task";
 import { LIST_KEY_SEPARATOR } from "../current-tasks.constants";
 import type { LinkedTask, LinkedTaskGroup } from "../obsidian-current-tasks";
 import { projectAppearance } from "../project-appearance";
 import { partitionTasksByCompletion, type SetCompleted } from "../task-completion";
+import { TASK_CREATE_TITLE } from "../task-create";
 import { canRestoreTaskFocus, focusTaskControl, hasTaskControlFocus } from "../task-focus";
+import type { ReorderTask } from "../task-reorder";
 import { COPY, ENABLED_TASK_CONTROL, ICONS, MIN_TASKS_FOR_GRIP, QUOTED_TITLE_PREFIX, QUOTED_TITLE_SUFFIX } from "./constants";
+import { useTaskReorder } from "./use-task-reorder";
 
-const { emptyToday, emptyProject, allTasksCompleted, collapse, expand, create, archive } = COPY;
-const { chevron, add, archive: archiveIcon, folder } = ICONS;
+const { emptyToday, emptyProject, allTasksCompleted, collapse, expand, archive } = COPY;
+const { chevron, archive: archiveIcon } = ICONS;
 
 type CompletionFocus = { control: HTMLInputElement; position: number };
 
@@ -29,6 +35,8 @@ export function TaskPanel({
   onOpenNote,
   onSetCompleted,
   onMoveTask,
+  onReorderTask,
+  onRequestCreateTask,
 }: {
   group: LinkedTaskGroup;
   today: boolean;
@@ -37,21 +45,31 @@ export function TaskPanel({
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
   onMoveTask?: MoveTaskFromButton;
+  onReorderTask?: ReorderTask;
+  onRequestCreateTask?: RequestCreateTask;
 }) {
-  const { kind, title, tasks, notePath, link } = group;
+  const { kind, title, tasks, notePath, link, projectEmoji } = group;
   const { active, completed } = partitionTasksByCompletion(tasks);
-  const visibleTasks = showCompleted ? [...active, ...completed] : active;
-  const taskCount = visibleTasks.length;
+  const [expanded, setExpanded] = useState(true);
   const canShowGrip = active.length >= MIN_TASKS_FOR_GRIP;
+  const reorderTask = canShowGrip ? onReorderTask : undefined;
+  const {
+    tasks: orderedActive, overlayRef, hoverPaused, onPointerDown, onPointerMove, onClickCapture, onDragStart, onKeyDown,
+  } = useTaskReorder(group, active, expanded, reorderTask);
+  const visibleTasks = showCompleted ? [...orderedActive, ...completed] : orderedActive;
+  const taskCount = visibleTasks.length;
+  const reorderByKey = reorderTask ? onKeyDown : undefined;
   const hasHiddenTasks = !showCompleted && completed.length > 0;
   const appearance = today ? undefined : projectAppearance(notePath ?? link);
   const listId = useId();
-  const [expanded, setExpanded] = useState(true);
   const listRef = useRef<HTMLUListElement>(null);
   const completionFocus = useRef<CompletionFocus | null>(null);
   const quotedTitle = `${QUOTED_TITLE_PREFIX}${title}${QUOTED_TITLE_SUFFIX}`;
   const disclosure = `${expanded ? collapse : expand}${quotedTitle}`;
-  const createLabel = `${create}${LABEL_SEPARATOR}${title}`;
+  const createLabel = `${TASK_CREATE_TITLE}${LABEL_SEPARATOR}${title}`;
+  const requestCreate: MouseEventHandler<HTMLButtonElement> | undefined = notePath && onRequestCreateTask
+    ? ({ currentTarget }) => onRequestCreateTask({ path: notePath, title, emoji: projectEmoji }, currentTarget)
+    : undefined;
   const archiveLabel = `${archive}${quotedTitle}`;
   const taskOccurrences = new Map<string, number>();
 
@@ -91,14 +109,31 @@ export function TaskPanel({
         onOpenNote={onOpenNote}
         onSetCompleted={onSetCompleted}
         onMoveTask={onMoveTask}
+        onReorderByKey={reorderByKey}
         onTaskMarked={rememberCompletionFocus}
       />
     );
   }
 
   function renderList() {
-    if (taskCount > 0)
-      return <ul className="pfa-task-list" ref={listRef}>{visibleTasks.map(renderTask)}</ul>;
+    if (taskCount > 0) {
+      return (
+        <>
+          <ul
+            className="pfa-task-list"
+            data-hover-paused={hoverPaused || undefined}
+            ref={listRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onClickCapture={onClickCapture}
+            onDragStart={onDragStart}
+          >
+            {visibleTasks.map(renderTask)}
+          </ul>
+          <ul className="pfa-drag-overlay" aria-hidden={TRUE_STRING} ref={overlayRef} />
+        </>
+      );
+    }
 
     const emptyList = today ? emptyToday : emptyProject;
     return <p className="pfa-empty-list">{hasHiddenTasks ? allTasksCompleted : emptyList}</p>;
@@ -107,7 +142,7 @@ export function TaskPanel({
   function renderProjectControls() {
     return (
       <div className="pfa-panel-actions">
-        <ActionButton label={createLabel} icon={add} />
+        <ActionButton label={createLabel} icon={PLUS_ICON} onClick={requestCreate} />
         <ActionButton label={archiveLabel} icon={archiveIcon} />
       </div>
     );
@@ -126,13 +161,7 @@ export function TaskPanel({
         >
           <Icon name={chevron} />
         </button>
-        {appearance ? (
-          <span className="pfa-project-emoji" aria-hidden={TRUE_STRING}>
-            {appearance.emoji}
-          </span>
-        ) : (
-          <Icon name={folder} />
-        )}
+        <ProjectIcon emoji={projectEmoji} />
       </>
     );
   }

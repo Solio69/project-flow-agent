@@ -3,7 +3,7 @@ export const FRONTMATTER_DELIMITER = "---";
 export const PROJECT_HEADING_MARKER = "##";
 export const TODAY_HEADING = "Сегодня";
 export const UNCHECKED_MARK = " ";
-export const WIKI_LINK_DELIMITERS = ["[[", "]]"];
+export const WIKI_LINK_DELIMITERS = ["[[", "]]"] as const;
 
 export const FRONTMATTER_FIELD_PATTERN = /^([^:]+):[ \t]*(.*)$/;
 export const INLINE_COMMENT_PATTERN = /[ \t]+#.*$/;

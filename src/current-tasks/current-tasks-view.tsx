@@ -1,4 +1,4 @@
-import { ItemView, Notice } from "obsidian";
+import { ItemView, Notice, type WorkspaceLeaf } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import {
   CURRENT_TASKS_STATE,
@@ -6,26 +6,38 @@ import {
   isKindReady,
   type CurrentTasksState,
 } from "./CurrentTasks";
+import type { CompletedVisibility } from "./completed-visibility";
 import { ERROR_COPY } from "./current-tasks-view.constants";
 import { CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW } from "./current-tasks.constants";
 import {
+  createCurrentTask,
   moveCurrentTask,
+  openCurrentTasksSource,
   openLinkedNote,
   readCurrentTasks,
+  reorderCurrentTask,
   setTaskCompletion,
   watchCurrentTasks,
 } from "./obsidian-current-tasks";
 import type { SetCompleted } from "./task-completion";
+import { PartialTaskCreation, TASK_CREATE_COPY, type CreateTask, type CreateTaskResult } from "./task-create";
 import { isEditableList, TaskEditError } from "./task-edit";
 import type { MoveTask } from "./task-move";
+import type { ReorderTask } from "./task-reorder";
 
 const { loading, error: errorState, ready } = CURRENT_TASKS_STATE;
 const {
   sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog,
-  completionLog, completionFailed, moveLog, moveFailed,
+  completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog,
 } = ERROR_COPY;
+const { failed: createFailed, busy } = TASK_CREATE_COPY;
 
-type TaskEditHandlers = { onSetCompleted?: SetCompleted; onMoveTask?: MoveTask };
+type TaskEditHandlers = {
+  onSetCompleted?: SetCompleted;
+  onMoveTask?: MoveTask;
+  onReorderTask?: ReorderTask;
+  onCreateTask?: CreateTask;
+};
 
 export class CurrentTasksView extends ItemView {
   navigation = true;
@@ -35,6 +47,10 @@ export class CurrentTasksView extends ItemView {
   private relatedPaths = new Set<string>();
   private revision = 0;
   private editInFlight = false;
+
+  constructor(leaf: WorkspaceLeaf, private readonly completedVisibility: CompletedVisibility) {
+    super(leaf);
+  }
 
   getViewType(): string {
     return CURRENT_TASKS_VIEW;
@@ -91,24 +107,33 @@ export class CurrentTasksView extends ItemView {
     const onOpenNote = async (link: string, forceNewTab = false) => {
       if (!isKindReady(state)) return;
       const { sourcePath } = state.document;
-      try {
-        await openLinkedNote(this.app, this.leaf, sourcePath, link, forceNewTab);
-      } catch (error) {
-        console.error(openLog, error);
-        new Notice(noteOpenFailed);
-      }
+      await this.openNote(() => openLinkedNote(this.app, this.leaf, sourcePath, link, forceNewTab));
+    };
+    const onOpenSource = async () => {
+      if (!isKindReady(state)) return;
+      const { sourcePath } = state.document;
+      await this.openNote(() => openCurrentTasksSource(this.app, sourcePath));
     };
 
-    const { onSetCompleted, onMoveTask } = this.taskEditHandlers(state);
     this.root?.render(
       <CurrentTasks
         title={CURRENT_TASKS_TITLE}
         state={state}
+        completedVisibility={this.completedVisibility}
         onOpenNote={onOpenNote}
-        onSetCompleted={onSetCompleted}
-        onMoveTask={onMoveTask}
+        onOpenSource={onOpenSource}
+        {...this.taskEditHandlers(state)}
       />,
     );
+  }
+
+  private async openNote(open: () => Promise<void>) {
+    try {
+      await open();
+    } catch (error) {
+      console.error(openLog, error);
+      new Notice(noteOpenFailed);
+    }
   }
 
   private taskEditHandlers(state: CurrentTasksState): TaskEditHandlers {
@@ -123,22 +148,49 @@ export class CurrentTasksView extends ItemView {
       onMoveTask: (task) => this.runTaskEdit(
         state, () => moveCurrentTask(this.app, document, task), moveLog, moveFailed,
       ),
+      onReorderTask: (task, destinationLine) => this.runTaskEdit(
+        state, () => reorderCurrentTask(this.app, document, task, destinationLine), reorderLog, reorderFailed,
+      ),
+      onCreateTask: async (request) => {
+        const result = await this.withTaskEdit<CreateTaskResult>(state, async () => {
+          try {
+            const taskPath = await createCurrentTask(this.app, document, request);
+            return { ok: true, taskPath };
+          } catch (error) {
+            if (error instanceof PartialTaskCreation)
+              return { ok: false, message: error.message, pending: error.receipt };
+            if (error instanceof TaskEditError)
+              return { ok: false, message: error.message, pending: request.pending };
+            console.error(createLog, error);
+            return { ok: false, message: createFailed, pending: request.pending };
+          }
+        });
+        return result ?? { ok: false, message: busy, pending: request.pending };
+      },
     };
   }
 
   private async runTaskEdit(state: CurrentTasksState, edit: () => Promise<void>, log: string, message: string) {
+    await this.withTaskEdit(state, async () => {
+      try {
+        await edit();
+      } catch (error) {
+        if (error instanceof TaskEditError) {
+          new Notice(error.message);
+        } else {
+          console.error(log, error);
+          new Notice(message);
+        }
+      }
+    });
+  }
+
+  private async withTaskEdit<T>(state: CurrentTasksState, edit: () => Promise<T>) {
     if (this.editInFlight || !this.root) return;
     this.editInFlight = true;
     this.render(state);
     try {
-      await edit();
-    } catch (error) {
-      if (error instanceof TaskEditError) {
-        new Notice(error.message);
-      } else {
-        console.error(log, error);
-        new Notice(message);
-      }
+      return await edit();
     } finally {
       this.editInFlight = false;
       if (this.root) await this.refresh();

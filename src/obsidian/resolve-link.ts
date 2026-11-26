@@ -5,5 +5,5 @@ export function resolveLink({ metadataCache, vault }: App, sourcePath: string, l
   const file = path
     ? metadataCache.getFirstLinkpathDest(path, sourcePath)
     : vault.getFileByPath(sourcePath);
-  return { file, subpath };
+  return { file, path, subpath };
 }

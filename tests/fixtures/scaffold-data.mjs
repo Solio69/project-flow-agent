@@ -16,6 +16,14 @@ export const aliasedBlogExpected = {
   todayPrefix: /class="pfa-project-emoji"[^>]*>📝<\/span><strong class="pfa-task-project">Контент:/,
 };
 
+export const iconizeFixture = {
+  defaultIcons: { "Блог/Блог.md": "📝" },
+  projectIcons: { "Мастерская/Мастерская.md": "💼", "Мастерская": "👩‍🎓" },
+  emojiMatches: /class="pfa-project-emoji"[^>]*>💼<\/span>/g,
+  fallbackMatches: /class="pfa-project-icon"/g,
+  rootNote: { path: "Мастерская.md", unrelated: { "Мастерская.m": "💼" }, emoji: /💼/ },
+};
+
 export const completionFeedback = {
   checked: /<input(?=[^>]*type="checkbox")(?=[^>]*checked="")(?=[^>]*aria-label="Выполнено: Черновик")/,
   disabled: /<input(?=[^>]*type="checkbox")(?=[^>]*disabled="")/,
@@ -47,6 +55,18 @@ export const moveProjectConflict = {
   renamedProjectPath: "Блог/Мастерская.md",
 };
 
+const reorderTitles = {
+  first: "Черновик",
+  second: moveFeedback.title,
+  last: "Другая активная задача",
+  completed: "Готовая задача",
+  otherGroup: "Черновик блога",
+};
+export const reorderTasks = {
+  ...reorderTitles,
+  expectedOrder: [reorderTitles.second, reorderTitles.completed, reorderTitles.last, reorderTitles.first],
+};
+
 export const tasksDesign = {
   period: /23–29 ноября/,
   emptyToday: /На сегодня пока нет задач/,
@@ -55,6 +75,7 @@ export const tasksDesign = {
   disclosure: /aria-expanded="true"/,
   history: /<button(?=[^>]*disabled="")(?=[^>]*aria-label="Перенести выполненные в историю")[^>]*>/,
   showCompleted: /<button[^>]*data-show-completed="true"[^>]*>.*?Скрыть выполненные/,
+  hideCompleted: /<button[^>]*data-show-completed="false"[^>]*>.*?Показать выполненные/,
 };
 
 export const completedVisibilityCases = [
@@ -64,12 +85,15 @@ export const completedVisibilityCases = [
 
 export const taskCompletionOrder = ["Черновик", "Вторая задача"];
 export const visibleTaskOrderBeforeWrite = ["Черновик", "Вторая задача", "Другая активная задача", "Готовая задача"];
+export const activeTaskOrder = visibleTaskOrderBeforeWrite.slice(0, -1);
+export const existingPluginSettings = { sampleSetting: "существующее значение", showCompleted: false };
 export const taskCheckboxLabel = /<input\s[^>]*aria-label="Выполнено: ([^"]+)"/g;
 export const taskGripWithIcon = /class="pfa-task-grip"[^>]*><span/g;
 
 export const currentTasksExpected = {
   viewTitle: "Текущие задачи",
-  viewHeading: /<h2>Текущие задачи<\/h2>/,
+  viewHeading: /<h2>(?:<a [^>]+>)?Текущие задачи(?:<\/a>)?<\/h2>/,
+  linkedSourceHeading: /<h2><a [^>]*>Текущие задачи<\/a><\/h2>/,
   legacyTask: /Проверить Черновик/,
   legacyProject: /<h3><a [^>]+>Мастерская<\/a><\/h3>/,
   todayGroup: /Сегодня/,
@@ -81,6 +105,21 @@ export const currentTasksExpected = {
   missingProject: /<h3>Пропавший проект<\/h3>/,
   missingSource: /не найдена в этом хранилище/,
   noteOpenFailed: "Не удалось открыть связанную заметку.",
+};
+
+export const createTaskCase = {
+  title: "Сверить описание",
+  invalidTitle: "Проверить: описание",
+  duplicateTitle: "Черновик",
+  projectPath: "Мастерская/Мастерская.md",
+  inboxPath: "Мастерская/project inbox",
+  notePath: "Мастерская/project inbox/Сверить описание.md",
+  row: "- [ ] [[Мастерская/project inbox/Сверить описание.md]]",
+  danglingLink: "- [ ] [[Мастерская/project inbox/Сверить описание]]",
+  danglingHeadingLink: "- [ ] [[Мастерская/project inbox/Сверить описание#Описание]]",
+  redirectedProjectPath: "Архив/Мастерская.md",
+  note: /^---\nid: (tsk_[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15})\n---\n$/,
+  action: /<button(?=[^>]*aria-label="Новая задача: Мастерская")(?![^>]*disabled="")[^>]*>/,
 };
 
 export const projectLinkCase = {
@@ -109,7 +148,7 @@ export const watchFixture = {
   styleFile: "styles.css",
   expectedViewType: /project-flow-agent-current-actions/,
   expectedThemeVariable: /--text-muted/,
-  originalHeading: "<h2>{title}</h2>",
+  originalHeading: '<h2><NoteLink note={sourceNote} onOpenNote={onOpenSource} /></h2>',
   probe: "pfa-watch-probe",
   componentPath: ["src", "current-tasks", "CurrentTasks", "CurrentTasks.tsx"],
 };

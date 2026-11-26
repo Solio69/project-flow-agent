@@ -1,3 +1,5 @@
+import { createTaskCase } from "./scaffold-data.mjs";
+
 export const legacyPeriodHeading = "**Период планирования**: 23.11.2026 - 29.11.2026";
 
 export const legacyTasks = [
@@ -76,10 +78,42 @@ const blogHeading = "## [[Блог/Блог|Контент]]";
 const activeBlogRow = "- [ ] [[Блог/Черновик блога]]";
 const draftRow = completionRow(" ");
 const moveRow = secondCompletionRow(" ");
+const commentForNextTask = "\r\n<!-- Пояснение к следующей задаче -->\r\n";
+const reorderOtherGroup = "\r\n" + blogHeading + "\r\n" + activeBlogRow + afterCompletion;
+export const reorderCases = [todayHeading, projectHeading].map((heading) => {
+  const group = completionHeader + heading + "\r\n";
+  return {
+    initial: group + [draftRow, previouslyCompleted, moveRow, remainingActive].join("\r\n") + reorderOtherGroup,
+    reordered: group + [moveRow, previouslyCompleted, remainingActive, draftRow].join("\r\n") + reorderOtherGroup,
+    annotated: group + draftRow + taskAnnotation + moveRow + reorderOtherGroup,
+  };
+});
+const reorderGroup = completionHeader + todayHeading;
+const reorderRows = [draftRow, moveRow].join("\r\n");
+export const reorderWithEdgeText = [
+  { title: "перед первой задачей", markdown: reorderGroup + commentForNextTask + reorderRows + reorderOtherGroup },
+  { title: "после последней задачи", markdown: reorderGroup + "\r\n" + reorderRows + taskAnnotation + reorderOtherGroup },
+];
+const reorderWithinEdges = (middle) => reorderGroup + commentForNextTask
+  + [draftRow, ...middle, previouslyCompleted].join("\r\n") + taskAnnotation + reorderOtherGroup;
+export const reorderInsideEdgeText = {
+  initial: reorderWithinEdges([moveRow, remainingActive]),
+  reordered: reorderWithinEdges([remainingActive, moveRow]),
+};
 const moveDocument = (todayRows, projectRows) => completionHeader + [
   todayHeading, ...todayRows, projectHeading, ...projectRows, blogHeading,
 ].join("\r\n") + afterCompletion;
 const emptyTodayMove = [todayHeading, projectHeading, moveRow];
+
+export const createTaskMarkdown = completionHeader + [
+  todayHeading, projectHeading, draftRow, previouslyCompleted, blogHeading,
+].join("\r\n") + afterCompletion;
+
+export const danglingCreateTaskMarkdown = createTaskMarkdown.replace(
+  previouslyCompleted, createTaskCase.danglingLink,
+);
+export const danglingHeadingTaskMarkdown = createTaskMarkdown.replace(previouslyCompleted, createTaskCase.danglingHeadingLink);
+export const createTaskAlreadyToday = createTaskMarkdown.replace(todayHeading, `${todayHeading}\r\n${createTaskCase.row}`);
 
 export const moveCases = [
   {
@@ -106,7 +140,6 @@ export const ambiguousMoveCases = {
   todayHeading: moveDocument([todayHeading], [moveRow]),
 };
 
-const commentForNextTask = "\r\n<!-- Пояснение к следующей задаче -->\r\n";
 export const moveAfterComment = moveDocument([], [remainingActive + commentForNextTask + moveRow]);
 export const moveWithDuplicatePeriod = moveCases[0].initial.replace(
   "period_end:",

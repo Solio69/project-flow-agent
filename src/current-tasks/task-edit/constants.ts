@@ -8,3 +8,4 @@ export const TASK_EDIT_COPY = {
 } as const;
 
 export const PRESERVED_LINE_ENDING = /(\r\n|\n|\r)/;
+export const SECTION_GAP_OPTIONS = { allowSectionSeparator: true } as const;

@@ -1,23 +1,15 @@
-import { HORIZONTAL_RULE_PATTERN } from "../parse-current-tasks.constants";
 import {
-  assertWritableGroup, findTaskGroup, PRESERVED_LINE_ENDING, readEditableList,
-  rowPartIndex, TASK_EDIT_COPY, TaskEditError, type EditableTask, type TaskRow,
+  assertFreeTaskGap, assertWritableGroup, findTaskGroup, markdownEndBoundary, PRESERVED_LINE_ENDING, readEditableList,
+  rowPartIndex, SECTION_GAP_OPTIONS, TASK_EDIT_COPY, TaskEditError, type EditableTask, type TaskRow,
 } from "../task-edit";
 import { TASK_MOVE_COPY } from "./constants";
 
-const { conflict, interleavedText } = TASK_EDIT_COPY;
+const { conflict } = TASK_EDIT_COPY;
 const { activeTaskRequired } = TASK_MOVE_COPY;
 
 export type MoveTask = (task: EditableTask) => Promise<void>;
 
 type MoveDestination = { headingLine: number; afterLine: number };
-
-function assertFreeGap(parts: readonly string[], start: number, end: number) {
-  for (let current = start + 1; current < end; current++) {
-    const text = parts[rowPartIndex(current)].trim();
-    if (text && !HORIZONTAL_RULE_PATTERN.test(text)) throw new TaskEditError(interleavedText(current));
-  }
-}
 
 export function moveTaskRow(markdown: string, task: TaskRow, { headingLine, afterLine }: MoveDestination) {
   const { groups, diagnostics } = readEditableList(markdown);
@@ -40,13 +32,13 @@ export function moveTaskRow(markdown: string, task: TaskRow, { headingLine, afte
   if (afterLine !== headingLine && anchorIndex === -1) throw new TaskEditError(conflict);
 
   const parts = markdown.split(PRESERVED_LINE_ENDING);
-  const endOfDocument = Math.ceil(parts.length / 2) + 1;
+  const endOfDocument = markdownEndBoundary(parts);
   const beforeSelected = originTasks[selectedIndex - 1]?.line ?? originHeading;
   const afterSelected = originTasks[selectedIndex + 1]?.line ?? nextOriginHeading ?? endOfDocument;
   const afterInsertion = destinationTasks[anchorIndex + 1]?.line ?? nextDestinationHeading ?? endOfDocument;
-  assertFreeGap(parts, beforeSelected, line);
-  assertFreeGap(parts, line, afterSelected);
-  assertFreeGap(parts, afterLine, afterInsertion);
+  assertFreeTaskGap(parts, beforeSelected, line, SECTION_GAP_OPTIONS);
+  assertFreeTaskGap(parts, line, afterSelected, SECTION_GAP_OPTIONS);
+  assertFreeTaskGap(parts, afterLine, afterInsertion, SECTION_GAP_OPTIONS);
 
   const rowIndex = rowPartIndex(line);
   const insertionIndex = rowPartIndex(afterLine) + 1;

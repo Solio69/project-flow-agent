@@ -1,4 +1,5 @@
 @import "./current-tasks/CurrentTasks/CurrentTasks.css";
+@import "./current-tasks/CreateTaskDialog/CreateTaskDialog.css";
 @import "./current-tasks/TasksToolbar/TasksToolbar.css";
 @import "./current-tasks/TasksList/TasksList.css";
 @import "./current-tasks/TaskPanel/TaskPanel.css";

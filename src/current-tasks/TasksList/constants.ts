@@ -5,8 +5,6 @@ import type { LinkedTaskGroup } from "../obsidian-current-tasks";
 
 export const DIAGNOSTIC_LABEL_SUFFIX = "." + SPACE;
 export const TASK_MOVE_CONTROL_SELECTOR = "button[data-task-path]";
-export const TASK_PANEL_SELECTOR = "section[data-section]";
-export const PANEL_DISCLOSURE_SELECTOR = "button[aria-expanded]";
 
 export const COPY = {
   diagnosticsTitle: "Замечания к заметке",

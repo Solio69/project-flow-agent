@@ -1,12 +1,4 @@
-import {
-  getFrontMatterInfo,
-  parseYaml,
-  type App,
-  type TAbstractFile,
-  type TFile,
-  type WorkspaceLeaf,
-} from "obsidian";
-import { object, regex, string } from "zod/mini";
+import type { App, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
 import { VAULT_PATH_SEPARATOR, WORKSPACE_TAB } from "../../obsidian/constants";
 import { resolveLink } from "../../obsidian/resolve-link";
 import { TASKS_FORMAT } from "../current-tasks.constants";
@@ -16,15 +8,17 @@ import { updateCompletionMark } from "../task-completion";
 import { TASK_EDIT_COPY, TaskEditError, type EditableTask } from "../task-edit";
 import { isTodayGroup } from "../task-group";
 import { moveTaskRow, TASK_MOVE_COPY } from "../task-move";
+import { reorderTaskRow } from "../task-reorder";
 import {
   DIAGNOSTIC_COPY,
   SOURCE_PATHS,
-  TASK_ID_PATTERN,
   VAULT_EVENTS,
 } from "./constants";
+import { emojiForProject, readProjectEmojis } from "./project-emojis";
+import { assertCurrentSource, findSource, requireSource } from "./source-note";
+import { readCachedTaskId, readTaskId } from "./task-note-id";
 import type { LinkedTask, LinkedTaskGroup, TasksSnapshot } from "./types";
 
-const taskProperties = object({ id: string().check(regex(TASK_ID_PATTERN)) });
 const {
   missingProjectNote,
   missingTaskNote,
@@ -35,32 +29,6 @@ const {
 const { create, modify, remove, rename } = VAULT_EVENTS;
 const { conflict, taskChanged, duplicateTask } = TASK_EDIT_COPY;
 const { activeTaskRequired, projectSection, todaySection } = TASK_MOVE_COPY;
-
-function taskIdFromMarkdown(markdown: string) {
-  const { exists, frontmatter } = getFrontMatterInfo(markdown);
-  if (!exists) return;
-  try {
-    const properties = taskProperties.safeParse(parseYaml(frontmatter));
-    if (properties.success) return properties.data.id;
-  } catch {
-    //TODO: Некорректный YAML не содержит подтверждённого ID задачи.
-  }
-}
-
-async function readTaskId({ vault }: App, file: TFile) {
-  try {
-    return taskIdFromMarkdown(await vault.cachedRead(file));
-  } catch {
-    //TODO: Недоступный файл или некорректные свойства отмечаются в модели просмотра.
-  }
-}
-
-function findSource({ vault }: App) {
-  for (const path of SOURCE_PATHS) {
-    const source = vault.getFileByPath(path);
-    if (source) return source;
-  }
-}
 
 function projectFolder(path: string, sourcePath: string): string | undefined {
   const parent = sourcePath.slice(
@@ -83,16 +51,18 @@ export async function readCurrentTasks(
   const sourceMarkdown = await vault.cachedRead(source);
   const document = parseCurrentTasks(sourceMarkdown);
   const { format, groups: parsedGroups, diagnostics } = document;
+  const projectEmojis = await readProjectEmojis(vault);
 
-  const projects = new Map<string, { title: string; path: string }>();
+  const projects = new Map<string, { title: string; path: string; emoji?: string }>();
   const linkedGroups: LinkedTaskGroup[] = parsedGroups.map((group) => {
     const { link, title, line } = group;
     if (!link) return group;
     const { file } = resolveLink(app, sourcePath, link);
     if (file) {
       const { path } = file;
-      projects.set(projectFolder(path, sourcePath) ?? title, { title, path });
-      return { ...group, notePath: path };
+      const emoji = emojiForProject(projectEmojis, path);
+      projects.set(projectFolder(path, sourcePath) ?? title, { title, path, emoji });
+      return { ...group, notePath: path, projectEmoji: emoji };
     }
     diagnostics.push({ line, message: missingProjectNote(title) });
     projects.set(title, { title, path: link });
@@ -114,7 +84,7 @@ export async function readCurrentTasks(
     const linked: LinkedTask = { ...task, notePath: path };
     if (format === TASKS_FORMAT.legacy) return linked;
 
-    linked.id = await readTaskId(app, file);
+    linked.id = await readCachedTaskId(vault, file);
     if (!linked.id) {
       diagnostics.push({ line, message: invalidTaskId });
     }
@@ -122,9 +92,10 @@ export async function readCurrentTasks(
       const folder = projectFolder(path, sourcePath);
       const project = folder && projects.get(folder);
       if (project) {
-        const { title, path: projectPath } = project;
+        const { title, path: projectPath, emoji } = project;
         linked.project = title;
         linked.projectPath = projectPath;
+        linked.projectEmoji = emoji;
       } else {
         diagnostics.push({ line, message: unknownTaskProject });
       }
@@ -153,6 +124,11 @@ export async function setTaskCompletion(
   completed: boolean,
 ) {
   await writeTaskEdit(app, snapshot, task, (markdown) => updateCompletionMark(markdown, task, completed));
+}
+
+export async function reorderCurrentTask(app: App, snapshot: TasksSnapshot, task: EditableTask, destinationLine: number) {
+  if (task.line === destinationLine) return;
+  await writeTaskEdit(app, snapshot, task, (markdown) => reorderTaskRow(markdown, task, destinationLine));
 }
 
 function findProjectGroup(
@@ -232,9 +208,7 @@ async function writeTaskEdit(
   const { vault } = app;
   const { sourcePath, sourceMarkdown, groups } = snapshot;
   const { id, notePath, link } = task;
-  const source = findSource(app);
-  if (!source || source.path !== sourcePath)
-    throw new TaskEditError(conflict);
+  const source = requireSource(app, sourcePath);
 
   const tasks = groups.flatMap((group) => group.tasks);
   if (!tasks.includes(task)) throw new TaskEditError(conflict);
@@ -263,7 +237,7 @@ async function writeTaskEdit(
         path,
         stat: { mtime, size },
       } = file;
-      const id = taskIdFromMarkdown(await vault.read(file));
+      const id = await readTaskId(vault, file);
       return { file, path, mtime, size, id };
     }),
   );
@@ -278,8 +252,7 @@ async function writeTaskEdit(
   if (matchingRows.length > 1) throw new TaskEditError(duplicateTask);
 
   const saved = await vault.process(source, (current) => {
-    if (source.path !== sourcePath || findSource(app) !== source)
-      throw new TaskEditError(conflict);
+    assertCurrentSource(app, source, sourcePath);
     if (project && resolveMoveProject(app, snapshot, notePath, project) !== projectFile)
       throw new TaskEditError(projectSection);
     for (const [rowLink, expectedFile] of filesByLink) {
@@ -333,14 +306,24 @@ export async function openLinkedNote(
   const { file, subpath } = resolveLink(app, sourcePath, link);
   if (!file) throw new Error(missingLinkedNote);
   const openInNewTab = forceNewTab || sourceLeaf.getViewState().pinned;
-  const leaf = openInNewTab ? app.workspace.getLeaf(WORKSPACE_TAB) : sourceLeaf;
+  await openTaskNote(app, file, openInNewTab ? undefined : sourceLeaf, subpath);
+}
+
+export async function openCurrentTasksSource(app: App, sourcePath: string) {
+  const file = app.vault.getFileByPath(sourcePath);
+  if (!file) throw new Error(missingLinkedNote);
+  await openTaskNote(app, file);
+}
+
+async function openTaskNote(app: App, file: TFile, existingLeaf?: WorkspaceLeaf, subpath?: string) {
+  const leaf = existingLeaf ?? app.workspace.getLeaf(WORKSPACE_TAB);
   try {
     await leaf.openFile(file, {
       active: true,
       eState: subpath ? { subpath } : undefined,
     });
   } catch (error) {
-    if (openInNewTab) leaf.detach();
+    if (!existingLeaf) leaf.detach();
     throw error;
   }
 }

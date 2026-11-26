@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { webcrypto } from "node:crypto";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
@@ -6,8 +7,8 @@ import { build } from "esbuild";
 import { renderToStaticMarkup } from "react-dom/server";
 import { legacyTasks } from "./current-tasks-markdown.mjs";
 import {
-  blogTaskMarkdown, completionReviewNotes, currentTasksExpected, differentTaskNoteMarkdown,
-  projectLinkCase, sourceNotePaths, taskNoteMarkdown,
+  blogTaskMarkdown, completionReviewNotes, createTaskCase, currentTasksExpected, differentTaskNoteMarkdown,
+  iconizeFixture, projectLinkCase, sourceNotePaths, taskNoteMarkdown,
 } from "./scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -21,7 +22,7 @@ function taskFile(path) {
   return { path, stat: { mtime: 0, size: taskNoteMarkdown.length } };
 }
 
-export async function createCurrentTasksFixture() {
+export async function createCurrentTasksFixture({ settings = {} } = {}) {
   const { outputFiles: [bundle] } = await build({
     absWorkingDir: project,
     entryPoints: ["src/main.ts"],
@@ -39,6 +40,7 @@ export async function createCurrentTasksFixture() {
   const listeners = new Map();
   const openedNotes = [];
   const writes = [];
+  const createdNotes = new Map();
   const source = { path: sourceNotePaths.legacy };
   const renamedSource = { path: sourceNotePaths.renamed };
   const note = taskFile("Мастерская/project inbox/Черновик.md");
@@ -47,7 +49,9 @@ export async function createCurrentTasksFixture() {
   const blogTaskNote = taskFile(blogTask.path);
   const blogNote = { path: blog.path };
   const projectNote = { path: projectNotePath };
+  const inbox = { path: createTaskCase.inboxPath, children: [] };
   const controls = {
+    iconize: iconizeFixture.defaultIcons,
     markdown: legacyTasks,
     sourceAvailable: true,
     renamedSourceAvailable: false,
@@ -58,6 +62,7 @@ export async function createCurrentTasksFixture() {
     secondTaskMarkdown: differentTaskNoteMarkdown,
     shortLinkDestination: note,
     projectLinkDestination: projectNote,
+    beforeReadSource: undefined,
     beforeProcess: undefined,
   };
   const noteReaders = new Map([
@@ -75,6 +80,15 @@ export async function createCurrentTasksFixture() {
   class Plugin {
     constructor(app) {
       this.app = app;
+    }
+
+    async loadData() {
+      return structuredClone(settings.data);
+    }
+
+    async saveData(data) {
+      await settings.beforeSave?.(data);
+      settings.data = structuredClone(data);
     }
 
     registerView(type, makeView) {
@@ -152,20 +166,41 @@ export async function createCurrentTasksFixture() {
   };
 
   const vault = {
+    configDir: ".obsidian",
+    adapter: {
+      async read(path) {
+        assert.equal(path, ".obsidian/plugins/obsidian-icon-folder/data.json");
+        if (!controls.iconize) throw new Error("Iconize data unavailable");
+        return JSON.stringify(controls.iconize);
+      },
+    },
+    getFolderByPath(path) {
+      return path === inbox.path ? inbox : null;
+    },
+    getAbstractFileByPath(path) {
+      return this.getFileByPath(path) ?? this.getFolderByPath(path);
+    },
     getFileByPath(path) {
       if (controls.renamedSourceAvailable && renamedSource.path === path) return renamedSource;
       if (controls.sourceAvailable && source.path === path) return source;
-      return relatedNotes.get(path) ?? null;
+      return createdNotes.get(path)?.file ?? relatedNotes.get(path) ?? null;
+    },
+    async create(path, markdown) {
+      assert.equal(this.getAbstractFileByPath(path), null);
+      const file = taskFile(path);
+      createdNotes.set(path, { file, markdown });
+      return file;
     },
     async cachedRead(file) {
-      const taskText = readTaskNote(file);
+      const taskText = createdNotes.get(file.path)?.markdown ?? readTaskNote(file);
       if (taskText !== undefined) return taskText;
       const pending = controls.nextRead;
       controls.nextRead = undefined;
       return pending ?? controls.markdown;
     },
     async read(file) {
-      return readTaskNote(file) ?? controls.markdown;
+      if (file === source || file === renamedSource) await controls.beforeReadSource?.();
+      return createdNotes.get(file.path)?.markdown ?? readTaskNote(file) ?? controls.markdown;
     },
     async process(file, update) {
       assert.ok(file === source || file === renamedSource);
@@ -196,12 +231,18 @@ export async function createCurrentTasksFixture() {
   runInNewContext(bundle.text, {
     module,
     exports: module.exports,
+    crypto: webcrypto,
     console: { error() {} },
     require(name) {
       if (name === "obsidian") {
         return {
           Plugin, ItemView, Notice,
-          parseLinktext: (link) => ({ path: link, subpath: "" }),
+          parseLinktext(link) {
+            const fragmentStart = link.indexOf("#");
+            return fragmentStart === -1
+              ? { path: link, subpath: "" }
+              : { path: link.slice(0, fragmentStart), subpath: link.slice(fragmentStart) };
+          },
           getFrontMatterInfo: (text) => ({ exists: true, frontmatter: text.split("---")[1] }),
           parseYaml: (text) => ({ id: text.match(/^id: (.+)$/m)?.[1] }),
         };
@@ -235,6 +276,7 @@ export async function createCurrentTasksFixture() {
       if (link === blog.link) return blogNote;
       if (link === blogTask.link) return blogTaskNote;
       if (link === "Черновик") return controls.shortLinkDestination;
+      if (createdNotes.has(link)) return createdNotes.get(link).file;
       return link === "Мастерская/project inbox/Черновик" ? note : null;
     },
   };
@@ -251,6 +293,7 @@ export async function createCurrentTasksFixture() {
     listeners,
     openedNotes,
     writes,
+    createdNotes,
     note,
     replacementNote,
     projectNote,
