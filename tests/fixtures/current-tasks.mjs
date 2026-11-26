@@ -7,7 +7,7 @@ import { build } from "esbuild";
 import { renderToStaticMarkup } from "react-dom/server";
 import { legacyTasks } from "./current-tasks-markdown.mjs";
 import {
-  blogTaskMarkdown, completionReviewNotes, createTaskCase, currentTasksExpected, differentTaskNoteMarkdown,
+  archiveTaskCase, blogTaskMarkdown, completionReviewNotes, createTaskCase, currentTasksExpected, differentTaskNoteMarkdown,
   iconizeFixture, projectLinkCase, renameTaskCase, sourceNotePaths, taskNoteMarkdown, transferTaskCase,
 } from "./scaffold-data.mjs";
 
@@ -51,6 +51,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
   const blogNote = { path: blog.path };
   const projectNote = { path: projectNotePath };
   const inbox = { path: createTaskCase.inboxPath, children: [] };
+  const archive = { path: archiveTaskCase.folder, children: [] };
   const blogInbox = { path: transferTaskCase.inboxPath, children: [] };
   const controls = {
     iconize: iconizeFixture.defaultIcons,
@@ -67,6 +68,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
     beforeReadSource: undefined,
     beforeProcess: undefined,
     unindexedPaths: [],
+    archiveAvailable: true,
     renameFailure: false,
     renameLinkFailure: false,
     updateLinksAfterRename: true,
@@ -186,6 +188,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
       },
     },
     getFolderByPath(path) {
+      if (path === archive.path) return controls.archiveAvailable ? archive : null;
       return path === inbox.path ? inbox : path === blogInbox.path ? blogInbox : null;
     },
     getAbstractFileByPath(path) {

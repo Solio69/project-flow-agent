@@ -6,6 +6,7 @@ export const TASK_EDIT_COPY = {
   interleavedText: (line: number) => `Обнаружен текст между задачами на строке ${line}. Изменение отменено.`,
   duplicateTask: "Задача или её ID повторяется. Исправьте дубли в списке.",
   invalidLink: "Путь к файлу задачи содержит символы, недопустимые во внутренней ссылке Obsidian.",
+  retryListUpdate: "Повторить обновление списка",
 } as const;
 
 export const INVALID_LINK_CHARACTERS = /[#|[\]^]|%%/u;

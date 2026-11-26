@@ -16,6 +16,7 @@ import type { RequestCreateTask } from "../dialogs/CreateTaskDialog";
 import { NoteLink, type OpenNote } from "../NoteLink";
 import { ProjectIcon } from "../ProjectIcon";
 import type { RequestRenameTask } from "../dialogs/RenameTaskDialog";
+import type { RequestArchiveTask } from "../dialogs/TaskArchiveDialog";
 import type { RequestTransferTask } from "../dialogs/TaskTransferDialog";
 import { Task, type TaskFromButton } from "../Task";
 import { LIST_KEY_SEPARATOR } from "../../model/current-tasks.constants";
@@ -32,10 +33,8 @@ import {
   hasTaskControlFocus,
 } from "../task-focus";
 import type { ReorderTask } from "../../model/task-reorder";
-import {
-  taskTransferProjects,
-  type TransferReceipt,
-} from "../../model/task-transfer";
+import { describeTaskProjects } from "../../model/task-projects";
+import type { TransferReceipt } from "../../model/task-transfer";
 import {
   COPY,
   ENABLED_TASK_CONTROL,
@@ -68,8 +67,8 @@ function enabledTaskControls(
 
 export function TaskPanel({
   group,
-  today,
-  showCompleted,
+  today: isToday,
+  showCompleted: isCompletedVisible,
   focusCompletedToggle,
   onOpenNote,
   onSetCompleted,
@@ -78,7 +77,8 @@ export function TaskPanel({
   onRequestCreateTask,
   onRequestRenameTask,
   onRequestTransferTask,
-  transferGroups,
+  onRequestArchiveTask,
+  projectGroups,
   lastTransfer,
 }: {
   group: LinkedTaskGroup;
@@ -92,36 +92,37 @@ export function TaskPanel({
   onRequestCreateTask?: RequestCreateTask;
   onRequestRenameTask?: RequestRenameTask;
   onRequestTransferTask?: RequestTransferTask;
-  transferGroups: LinkedTaskGroup[];
+  onRequestArchiveTask?: RequestArchiveTask;
+  projectGroups: LinkedTaskGroup[];
   lastTransfer?: TransferReceipt;
 }) {
   const { kind, title, tasks, notePath, link, projectEmoji } = group;
   const { active, completed } = partitionTasksByCompletion(tasks);
-  const [expanded, setExpanded] = useState(true);
-  const canShowGrip = active.length >= MIN_TASKS_FOR_GRIP;
-  const reorderTask = canShowGrip ? onReorderTask : undefined;
+  const [isExpanded, setIsExpanded] = useState(true);
+  const isGripAvailable = active.length >= MIN_TASKS_FOR_GRIP;
+  const reorderTask = isGripAvailable ? onReorderTask : undefined;
   const {
     tasks: orderedActive,
     overlayRef,
-    hoverPaused,
+    hoverPaused: isHoverPaused,
     onPointerDown,
     onPointerMove,
     onClickCapture,
     onDragStart,
     onKeyDown,
-  } = useTaskReorder(group, active, expanded, reorderTask);
-  const visibleTasks = showCompleted
+  } = useTaskReorder(group, active, isExpanded, reorderTask);
+  const visibleTasks = isCompletedVisible
     ? [...orderedActive, ...completed]
     : orderedActive;
   const taskCount = visibleTasks.length;
   const reorderByKey = reorderTask ? onKeyDown : undefined;
-  const hasHiddenTasks = !showCompleted && completed.length > 0;
-  const appearance = today ? undefined : projectAppearance(notePath ?? link);
+  const isCompletedSectionHidden = !isCompletedVisible && completed.length > 0;
+  const appearance = isToday ? undefined : projectAppearance(notePath ?? link);
   const listId = useId();
   const listRef = useRef<HTMLUListElement>(null);
   const completionFocus = useRef<CompletionFocus | null>(null);
   const quotedTitle = `${QUOTED_TITLE_PREFIX}${title}${QUOTED_TITLE_SUFFIX}`;
-  const disclosure = `${expanded ? collapse : expand}${quotedTitle}`;
+  const disclosure = `${isExpanded ? collapse : expand}${quotedTitle}`;
   const createLabel = `${TASK_CREATE_TITLE}${LABEL_SEPARATOR}${title}`;
   const requestCreate: MouseEventHandler<HTMLButtonElement> | undefined =
     notePath && onRequestCreateTask
@@ -141,11 +142,11 @@ export function TaskPanel({
       : undefined;
 
   useLayoutEffect(() => {
-    if (revealTransfer) setExpanded(true);
+    if (revealTransfer) setIsExpanded(true);
   }, [revealTransfer]);
 
   function rememberCompletionFocus(control: HTMLInputElement) {
-    if (showCompleted || !hasTaskControlFocus(control)) return;
+    if (isCompletedVisible || !hasTaskControlFocus(control)) return;
     const position = enabledTaskControls(listRef.current).indexOf(control);
     if (position < 0) return;
     completionFocus.current = { control, position };
@@ -170,11 +171,11 @@ export function TaskPanel({
       notePath,
       link,
       id,
-      completed,
+      completed: isCompleted,
       project,
       projectEmoji: taskEmoji,
     } = task;
-    const showGrip = canShowGrip && !completed;
+    const isGripVisible = isGripAvailable && !isCompleted;
     const identity = id ?? notePath ?? link;
     const occurrence =
       identity === undefined ? 0 : (taskOccurrences.get(identity) ?? 0);
@@ -189,36 +190,41 @@ export function TaskPanel({
             selected,
             {
               title: project ?? title,
-              emoji: today ? taskEmoji : projectEmoji,
+              emoji: isToday ? taskEmoji : projectEmoji,
             },
             control,
           )
       : undefined;
-    const transferProjects =
-      onRequestTransferTask &&
+    const taskProjects =
+      (onRequestTransferTask || onRequestArchiveTask) &&
       notePath &&
-      taskTransferProjects(transferGroups, notePath);
+      describeTaskProjects(projectGroups, notePath);
     const transferFromButton: TaskFromButton | undefined =
       onRequestTransferTask &&
-      transferProjects &&
-      transferProjects.destinations.length
+      taskProjects &&
+      taskProjects.destinations.length
         ? (selected, control) =>
             onRequestTransferTask(
-              { task: selected, ...transferProjects },
+              { task: selected, ...taskProjects },
               control,
             )
+        : undefined;
+    const archiveFromButton: TaskFromButton | undefined =
+      onRequestArchiveTask && taskProjects
+        ? (selected, control) => onRequestArchiveTask({ task: selected, owner: taskProjects.owner }, control)
         : undefined;
     return (
       <Task
         key={key}
         task={task}
-        today={today}
-        showGrip={showGrip}
+        today={isToday}
+        showGrip={isGripVisible}
         onOpenNote={onOpenNote}
         onSetCompleted={onSetCompleted}
         onMoveTask={onMoveTask}
         onRenameTask={renameFromButton}
         onTransferTask={transferFromButton}
+        onArchiveTask={archiveFromButton}
         onReorderByKey={reorderByKey}
         onTaskMarked={rememberCompletionFocus}
       />
@@ -231,7 +237,7 @@ export function TaskPanel({
         <>
           <ul
             className="pfa-task-list"
-            data-hover-paused={hoverPaused || undefined}
+            data-hover-paused={isHoverPaused || undefined}
             ref={listRef}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -249,10 +255,10 @@ export function TaskPanel({
       );
     }
 
-    const emptyList = today ? emptyToday : emptyProject;
+    const emptyList = isToday ? emptyToday : emptyProject;
     return (
       <p className="pfa-empty-list">
-        {hasHiddenTasks ? allTasksCompleted : emptyList}
+        {isCompletedSectionHidden ? allTasksCompleted : emptyList}
       </p>
     );
   }
@@ -278,8 +284,8 @@ export function TaskPanel({
           className="pfa-disclosure"
           aria-label={disclosure}
           aria-controls={listId}
-          aria-expanded={expanded}
-          onClick={() => setExpanded((previous) => !previous)}
+          aria-expanded={isExpanded}
+          onClick={() => setIsExpanded((previous) => !previous)}
         >
           <Icon name={chevron} />
         </button>
@@ -297,13 +303,13 @@ export function TaskPanel({
       aria-label={title}
     >
       <header className="pfa-panel-heading">
-        {!today && renderProjectLead()}
+        {!isToday && renderProjectLead()}
         <h3 tabIndex={OMIT_FROM_TAB_ORDER}>
           <NoteLink note={group} onOpenNote={onOpenNote} />
         </h3>
-        {!today && renderProjectControls()}
+        {!isToday && renderProjectControls()}
       </header>
-      <div className="pfa-panel-content" id={listId} hidden={!expanded}>
+      <div className="pfa-panel-content" id={listId} hidden={!isExpanded}>
         {renderList()}
       </div>
     </section>

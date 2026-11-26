@@ -9,7 +9,13 @@ import type { TasksSnapshot } from "../model/linked-tasks";
 
 const { inboxMissing, projectMissing } = TASK_CREATE_COPY;
 
-export function resolveProjectInbox(app: App, { groups, sourcePath }: TasksSnapshot, projectPath: string) {
+export function resolveProjectFolder(
+  app: App,
+  { groups, sourcePath }: TasksSnapshot,
+  projectPath: string,
+  folderName: string,
+  missingFolder: string,
+) {
   const { vault } = app;
   const [project, duplicate] = groups.filter((group) => !isTodayGroup(group) && group.notePath === projectPath);
   if (!project || duplicate) throw new TaskEditError(projectMissing);
@@ -20,17 +26,24 @@ export function resolveProjectInbox(app: App, { groups, sourcePath }: TasksSnaps
   const { file: projectFile } = resolveLink(app, sourcePath, link);
   if (!projectFile || projectFile.path !== projectPath) throw new TaskEditError(projectMissing);
 
-  const inboxPath = parent + VAULT_PATH_SEPARATOR + PROJECT_INBOX;
-  const inbox = vault.getFolderByPath(inboxPath);
-  if (!inbox) throw new TaskEditError(inboxMissing);
+  const folderPath = parent + VAULT_PATH_SEPARATOR + folderName;
+  const folder = vault.getFolderByPath(folderPath);
+  if (!folder) throw new TaskEditError(missingFolder);
   const source = requireSource(app, sourcePath);
 
   const assertCurrent = () => {
     assertCurrentSource(app, source, sourcePath);
     const { file } = resolveLink(app, sourcePath, link);
     if (file !== projectFile || file?.path !== projectPath) throw new TaskEditError(projectMissing);
-    if (vault.getFolderByPath(inboxPath) !== inbox) throw new TaskEditError(inboxMissing);
+    if (vault.getFolderByPath(folderPath) !== folder) throw new TaskEditError(missingFolder);
   };
 
-  return { inbox, project, source, assertCurrent, inboxPath };
+  return { folder, project, source, assertCurrent, folderPath };
+}
+
+export function resolveProjectInbox(app: App, snapshot: TasksSnapshot, projectPath: string) {
+  const { folder, folderPath, project, source, assertCurrent } = resolveProjectFolder(
+    app, snapshot, projectPath, PROJECT_INBOX, inboxMissing,
+  );
+  return { inbox: folder, inboxPath: folderPath, project, source, assertCurrent };
 }

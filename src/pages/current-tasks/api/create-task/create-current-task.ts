@@ -36,8 +36,8 @@ export async function createCurrentTask(app: App, snapshot: TasksSnapshot, reque
     }
   } else {
     const filenameKey = filename.toLowerCase();
-    const nameInUse = inbox.children.some(({ name }) => name.toLowerCase() === filenameKey);
-    if (vault.getAbstractFileByPath(path) || nameInUse) throw new TaskEditError(occupiedPath);
+    const isNameInUse = inbox.children.some(({ name }) => name.toLowerCase() === filenameKey);
+    if (vault.getAbstractFileByPath(path) || isNameInUse) throw new TaskEditError(occupiedPath);
   }
   if (matchingCount > 0) throw new TaskEditError(duplicateTask);
 

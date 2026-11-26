@@ -6,23 +6,23 @@ function isDialogBackdrop({ target, currentTarget, clientX, clientY }: MouseEven
   return clientX < left || clientX > right || clientY < top || clientY > bottom;
 }
 
-export function useTaskDialog<Result>(
+export function useTaskDialog<Result, Element extends HTMLElement>(
   onClose: (result?: Result) => void,
-  submitting: RefObject<boolean>,
-  initialFocus: RefObject<HTMLInputElement | null>,
-  afterFocus?: (input: HTMLInputElement) => void,
+  isSubmitting: RefObject<boolean>,
+  initialFocus: RefObject<Element | null>,
+  afterFocus?: (element: Element) => void,
 ) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const pressedBackdrop = useRef(false);
+  const isBackdropPressed = useRef(false);
 
   useLayoutEffect(() => {
     const { current: element } = dialog;
     if (element && !element.open) {
       element.showModal();
-      const { current: input } = initialFocus;
-      if (input) {
-        input.focus({ preventScroll: true });
-        afterFocus?.(input);
+      const { current: control } = initialFocus;
+      if (control) {
+        control.focus({ preventScroll: true });
+        afterFocus?.(control);
       }
     }
     return () => (element?.open ? element.close() : undefined);
@@ -34,7 +34,7 @@ export function useTaskDialog<Result>(
   }
 
   function requestClose() {
-    if (!submitting.current) close();
+    if (!isSubmitting.current) close();
   }
 
   function cancelDialog(event: SyntheticEvent<HTMLDialogElement>) {
@@ -43,13 +43,13 @@ export function useTaskDialog<Result>(
   }
 
   function captureBackdropPress(event: MouseEvent<HTMLDialogElement>) {
-    pressedBackdrop.current = isDialogBackdrop(event);
+    isBackdropPressed.current = isDialogBackdrop(event);
   }
 
   function dismissFromBackdrop(event: MouseEvent<HTMLDialogElement>) {
-    const dismiss = pressedBackdrop.current && isDialogBackdrop(event);
-    pressedBackdrop.current = false;
-    if (dismiss) requestClose();
+    const isBackdropDismissal = isBackdropPressed.current && isDialogBackdrop(event);
+    isBackdropPressed.current = false;
+    if (isBackdropDismissal) requestClose();
   }
 
   return {

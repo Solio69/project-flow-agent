@@ -682,6 +682,7 @@
   const status = root.querySelector("[data-status]");
   const confirmButton = dialog.querySelector("[data-confirm]");
   const cancelButton = dialog.querySelector("[data-cancel]");
+  const closeButton = dialog.querySelector(".pfa-close");
   const projects = [
     { id: "blog", name: "Блог", emoji: "📝" },
     { id: "agent", name: "Project Flow Agent", emoji: "🧭" },
@@ -922,7 +923,7 @@
       input.focus();
       if (input.type === "text") input.setSelectionRange(input.value.length, input.value.length);
     } else {
-      cancelButton.focus();
+      (cancelButton.hidden ? closeButton : cancelButton).focus();
     }
   }
 
@@ -1117,7 +1118,7 @@
       symbol: icon("trash-2", "🗑︎"),
       content: `${projectContext(projectFor(state.tasks[id].project))}
         <p>Файл «${html(state.tasks[id].title)}» переместится в архив проекта.</p>`,
-      label: "В архив", danger: true, source,
+      label: "В архив", danger: true, dismissOnBackdrop: true, source,
       onSubmit: () => {
         removeFrom(group, id);
         state.archive.unshift(id);

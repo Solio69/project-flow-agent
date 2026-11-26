@@ -6,3 +6,4 @@
 @import "./ui/Task/Task.css";
 @import "./ui/TaskActionsMenu/TaskActionsMenu.css";
 @import "./ui/dialogs/TaskTransferDialog/TaskTransferDialog.css";
+@import "./ui/dialogs/TaskArchiveDialog/TaskArchiveDialog.css";

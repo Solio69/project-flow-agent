@@ -5,7 +5,6 @@ export const TASK_TRANSFER_COPY = {
   destination: "Куда перенести",
   origin: (project: string) => `Из проекта «${project}»`,
   submit: "Перенести",
-  retry: "Повторить обновление списка",
   saving: "Переношу…",
   sameProject: "Задача уже принадлежит этому проекту.",
   failed: "Не удалось перенести задачу. Список обновится, затем повторите действие.",

@@ -5,6 +5,7 @@ import type { CompletedVisibility } from "../model/completed-visibility";
 import { ERROR_COPY } from "./current-tasks-view.constants";
 import { CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW } from "../model/current-tasks.constants";
 import {
+  archiveCurrentTask,
   createCurrentTask,
   moveCurrentTask,
   openCurrentTasksSource,
@@ -16,6 +17,7 @@ import {
   transferCurrentTask,
   watchCurrentTasks,
 } from "../api";
+import { PartialTaskArchive, TASK_ARCHIVE_COPY, type ArchiveTask, type ArchiveTaskResult } from "../model/task-archive";
 import type { SetCompleted } from "../model/task-completion";
 import { PartialTaskCreation, TASK_CREATE_COPY, type CreateTask, type CreateTaskResult } from "../model/task-create";
 import { isEditableList, TaskEditError } from "../model/task-edit";
@@ -29,11 +31,12 @@ import { CURRENT_TASKS_STATE } from "../model/view-state.constants";
 const { loading, error: errorState, ready } = CURRENT_TASKS_STATE;
 const {
   sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog,
-  completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog, renameLog, transferLog,
+  completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog, renameLog, transferLog, archiveLog,
 } = ERROR_COPY;
 const { failed: createFailed, busy } = TASK_CREATE_COPY;
 const { failed: renameFailed } = TASK_RENAME_COPY;
 const { failed: transferFailed } = TASK_TRANSFER_COPY;
+const { failed: archiveFailed } = TASK_ARCHIVE_COPY;
 
 type TaskEditHandlers = {
   onSetCompleted?: SetCompleted;
@@ -42,6 +45,7 @@ type TaskEditHandlers = {
   onCreateTask?: CreateTask;
   onRenameTask?: RenameTask;
   onTransferTask?: TransferTask;
+  onArchiveTask?: ArchiveTask;
 };
 
 export class CurrentTasksView extends ItemView {
@@ -51,7 +55,7 @@ export class CurrentTasksView extends ItemView {
   private stopWatching?: () => void;
   private relatedPaths = new Set<string>();
   private revision = 0;
-  private editInFlight = false;
+  private isEditInFlight = false;
 
   constructor(leaf: WorkspaceLeaf, private readonly completedVisibility: CompletedVisibility) {
     super(leaf);
@@ -69,7 +73,7 @@ export class CurrentTasksView extends ItemView {
     this.root ??= createRoot(this.contentEl);
     this.render({ kind: loading });
     this.stopWatching ??= watchCurrentTasks(this.app, (path) => this.relatedPaths.has(path), () => {
-      if (!this.editInFlight) void this.refresh();
+      if (!this.isEditInFlight) void this.refresh();
     });
     await this.refresh();
   }
@@ -142,7 +146,7 @@ export class CurrentTasksView extends ItemView {
   }
 
   private taskEditHandlers(state: CurrentTasksState): TaskEditHandlers {
-    if (this.editInFlight || !isKindReady(state)) return {};
+    if (this.isEditInFlight || !isKindReady(state)) return {};
     const { document } = state;
     if (!isEditableList(document)) return {};
 
@@ -203,6 +207,22 @@ export class CurrentTasksView extends ItemView {
         });
         return result ?? { ok: false, message: busy, pending: request.pending };
       },
+      onArchiveTask: async (request) => {
+        const result = await this.withTaskEdit<ArchiveTaskResult>(state, async () => {
+          try {
+            const taskPath = await archiveCurrentTask(this.app, document, request);
+            return { ok: true, taskPath };
+          } catch (error) {
+            if (error instanceof PartialTaskArchive)
+              return { ok: false, message: error.message, pending: error.receipt };
+            if (error instanceof TaskEditError)
+              return { ok: false, message: error.message, pending: request.pending };
+            console.error(archiveLog, error);
+            return { ok: false, message: archiveFailed, pending: request.pending };
+          }
+        });
+        return result ?? { ok: false, message: busy, pending: request.pending };
+      },
     };
   }
 
@@ -222,14 +242,14 @@ export class CurrentTasksView extends ItemView {
   }
 
   private async withTaskEdit<T>(state: CurrentTasksState, edit: () => Promise<T>) {
-    if (this.editInFlight || !this.root) return;
-    this.editInFlight = true;
+    if (this.isEditInFlight || !this.root) return;
+    this.isEditInFlight = true;
     this.revision++;
     this.render(state);
     try {
       return await edit();
     } finally {
-      this.editInFlight = false;
+      this.isEditInFlight = false;
       if (this.root) await this.refresh();
     }
   }

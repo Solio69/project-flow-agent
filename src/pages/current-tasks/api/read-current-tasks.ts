@@ -44,7 +44,7 @@ export async function readCurrentTasks(
 
   async function linkTask(
     task: CurrentTask,
-    today: boolean,
+    isToday: boolean,
   ): Promise<LinkedTask> {
     const { link, line } = task;
     if (!link) return task;
@@ -59,7 +59,7 @@ export async function readCurrentTasks(
 
     linked.id = await readCachedTaskId(vault, file);
     if (!linked.id) diagnostics.push({ line, message: invalidTaskId });
-    if (today) {
+    if (isToday) {
       const folder = projectFolder(path, sourcePath);
       const project = folder && projects.get(folder);
       if (project) {
@@ -76,10 +76,10 @@ export async function readCurrentTasks(
 
   async function linkGroupTasks(group: LinkedTaskGroup) {
     const { tasks } = group;
-    const today = isTodayGroup(group);
+    const isToday = isTodayGroup(group);
     return {
       ...group,
-      tasks: await Promise.all(tasks.map((task) => linkTask(task, today))),
+      tasks: await Promise.all(tasks.map((task) => linkTask(task, isToday))),
     };
   }
 

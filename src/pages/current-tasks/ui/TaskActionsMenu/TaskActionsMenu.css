@@ -12,6 +12,8 @@
   z-index: 2;
   inset-block-start: calc(100% + 5px);
   inset-inline-end: 0;
+  display: flex;
+  flex-direction: column;
   inline-size: min(272px, calc(100cqi - 12px));
   padding: 4px;
   border: 1px solid var(--pfa-border);
@@ -43,6 +45,11 @@
   transform: rotate(225deg);
 }
 
+.pfa-current-tasks .pfa-task-menu-items {
+  min-block-size: 0;
+  overflow: auto;
+}
+
 .pfa-current-tasks .pfa-task-menu .pfa-control {
   position: relative;
   justify-content: flex-start;
@@ -55,6 +62,10 @@
   border-radius: 8px;
   background: transparent;
   text-align: start;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control:focus-visible {
+  outline-offset: -2px;
 }
 
 .pfa-current-tasks .pfa-task-menu .pfa-control + .pfa-control::before {

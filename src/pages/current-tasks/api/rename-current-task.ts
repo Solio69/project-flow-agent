@@ -42,15 +42,15 @@ export async function renameCurrentTask(
   const filename = taskFilename(title);
   const parent = vaultParentPath(notePath);
   const destination = parent ? parent + VAULT_PATH_SEPARATOR + filename : filename;
-  const samePath = destination === notePath;
-  if (!samePath && destination.toLowerCase() === notePath.toLowerCase()) throw new TaskEditError(caseOnly);
+  const isSamePath = destination === notePath;
+  if (!isSamePath && destination.toLowerCase() === notePath.toLowerCase()) throw new TaskEditError(caseOnly);
 
   const { stat: { mtime, size } } = file;
   const { stat: { mtime: sourceMtime, size: sourceSize } } = source;
-  const [currentSource, savedId, destinationExists] = await Promise.all([
+  const [currentSource, savedId, isDestinationOccupied] = await Promise.all([
     vault.read(source),
     readTaskId(vault, file),
-    samePath ? false : vault.adapter.exists(destination, false),
+    isSamePath ? false : vault.adapter.exists(destination, false),
   ]);
   assertCurrentSource(app, source, sourcePath);
   if (currentSource !== sourceMarkdown) throw new RenameTaskSourceChanged(currentSource);
@@ -61,8 +61,8 @@ export async function renameCurrentTask(
   if (savedId !== id || currentPath !== notePath || currentMtime !== mtime || currentSize !== size ||
       vault.getFileByPath(notePath) !== file || resolveLink(app, sourcePath, link).file !== file)
     throw new TaskEditError(taskChanged);
-  if (samePath) return notePath;
-  if (destinationExists || vault.getAbstractFileByPath(destination)) throw new TaskEditError(occupiedPath);
+  if (isSamePath) return notePath;
+  if (isDestinationOccupied || vault.getAbstractFileByPath(destination)) throw new TaskEditError(occupiedPath);
 
   try {
     await fileManager.renameFile(file, destination);

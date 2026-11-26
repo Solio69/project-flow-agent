@@ -9,12 +9,12 @@ export async function openLinkedNote(
   sourceLeaf: WorkspaceLeaf,
   sourcePath: string,
   link: string,
-  forceNewTab: boolean,
+  isNewTabForced: boolean,
 ): Promise<void> {
   const { file, subpath } = resolveLink(app, sourcePath, link);
   if (!file) throw new Error(missingLinkedNote);
-  const openInNewTab = forceNewTab || sourceLeaf.getViewState().pinned;
-  await openTaskNote(app, file, openInNewTab ? undefined : sourceLeaf, subpath);
+  const isNewTabRequested = isNewTabForced || sourceLeaf.getViewState().pinned;
+  await openTaskNote(app, file, isNewTabRequested ? undefined : sourceLeaf, subpath);
 }
 
 export async function openCurrentTasksSource(app: App, sourcePath: string) {

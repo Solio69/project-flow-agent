@@ -1,4 +1,5 @@
 export { TASK_EDIT_COPY, PRESERVED_LINE_ENDING, SECTION_GAP_OPTIONS } from "./constants";
+export { rewriteTaskLink } from "./rewrite-task-link";
 export {
   arrangeTaskRows,
   assertFreeTaskGap,

@@ -1,28 +1,28 @@
 import type { IconName } from "obsidian";
-import type { MouseEventHandler } from "react";
-import { BUTTON_TYPE } from "../../lib/dom/html-attributes";
+import type { ComponentPropsWithRef } from "react";
+import { BUTTON_TYPE } from "../../lib/dom";
 import { Icon } from "../Icon";
 
-export function ActionButton({ label, icon, showLabel = false, taskPath, onClick }: {
+type ActionButtonProps = ComponentPropsWithRef<typeof BUTTON_TYPE> & {
   label: string;
   icon: IconName;
   showLabel?: boolean;
-  taskPath?: string;
-  onClick?: MouseEventHandler<HTMLButtonElement>;
-}) {
-  const className = showLabel ? "pfa-control" : "pfa-control pfa-control-icon";
+};
+
+export function ActionButton({ label, icon, showLabel: isLabelVisible = false, onClick, ...buttonProps }: ActionButtonProps) {
+  const className = isLabelVisible ? "pfa-control" : "pfa-control pfa-control-icon";
 
   return (
     <button
+      {...buttonProps}
       type={BUTTON_TYPE}
       className={className}
       aria-label={label}
-      data-task-path={taskPath}
       disabled={!onClick}
       onClick={onClick}
     >
       <Icon name={icon} />
-      {showLabel && label}
+      {isLabelVisible && label}
     </button>
   );
 }

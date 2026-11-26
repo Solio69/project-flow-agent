@@ -134,6 +134,12 @@ export const transferTaskCases = [
 ];
 export const transferWithShortLink = moveDocument([shortDraftRow], []);
 export const transferWithAmbiguousToday = moveDocument([draftRow, ambiguousTaskRow], []);
+export const archiveTaskCases = [
+  { markdown: moveDocument([draftRow], [moveRow]), after: moveDocument([], [moveRow]), today: true, completed: false },
+  { markdown: moveDocument([], [draftRow, moveRow]), after: moveDocument([], [moveRow]), today: false, completed: false },
+  { markdown: moveDocument([completionRow("x")], [moveRow]), after: moveDocument([], [moveRow]), today: true, completed: true },
+  { markdown: moveDocument([], [moveRow, completionRow("x")]), after: moveDocument([], [moveRow]), today: false, completed: true },
+];
 
 export const createTaskMarkdown = completionHeader + [
   todayHeading, projectHeading, draftRow, previouslyCompleted, blogHeading,

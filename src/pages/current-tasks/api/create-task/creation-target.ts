@@ -1,7 +1,7 @@
 import type { App, TFile, TFolder } from "obsidian";
 import { VAULT_PATH_SEPARATOR } from "../../../../shared/lib/note-path";
 import { taskFilename, type CreateTaskRequest } from "../../model/task-create";
-import { resolveProjectInbox } from "../project-inbox";
+import { resolveProjectInbox } from "../resolve-project-folder";
 import type { LinkedTaskGroup, TasksSnapshot } from "../../model/linked-tasks";
 
 

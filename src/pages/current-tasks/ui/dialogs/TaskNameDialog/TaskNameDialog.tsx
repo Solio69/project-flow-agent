@@ -25,7 +25,7 @@ export function TaskNameDialog({
   initialTitle = EMPTY_STRING,
   submitLabel = saveLabel,
   failedMessage,
-  readOnly = false,
+  readOnly: isReadOnly = false,
   save,
   onClose,
 }: {
@@ -40,10 +40,10 @@ export function TaskNameDialog({
   onClose: (taskPath?: string) => void;
 }) {
   const nameInput = useRef<HTMLInputElement>(null);
-  const submitting = useRef(false);
+  const isSubmitting = useRef(false);
   const { close, requestClose, dialogProps } = useTaskDialog(
     onClose,
-    submitting,
+    isSubmitting,
     nameInput,
     moveCaretToEnd,
   );
@@ -51,17 +51,17 @@ export function TaskNameDialog({
   const messageId = useId();
   const [taskTitle, setTaskTitle] = useState(initialTitle);
   const [message, setMessage] = useState(EMPTY_STRING);
-  const [busy, setBusy] = useState(false);
-  const action = busy ? saving : submitLabel;
+  const [isBusy, setIsBusy] = useState(false);
+  const action = isBusy ? saving : submitLabel;
   const messageDescription = message ? messageId : undefined;
-  const titleReadOnly = busy || readOnly;
-  const submitDisabled = busy || !save;
+  const isTitleReadOnly = isBusy || isReadOnly;
+  const isSubmitDisabled = isBusy || !save;
 
   async function submitTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current || !save) return;
-    submitting.current = true;
-    setBusy(true);
+    if (isSubmitting.current || !save) return;
+    isSubmitting.current = true;
+    setIsBusy(true);
     setMessage(EMPTY_STRING);
     try {
       const result = await save(taskTitle);
@@ -72,8 +72,8 @@ export function TaskNameDialog({
     } catch {
       setMessage(failedMessage);
     } finally {
-      submitting.current = false;
-      setBusy(false);
+      isSubmitting.current = false;
+      setIsBusy(false);
     }
   }
 
@@ -90,7 +90,7 @@ export function TaskNameDialog({
           <ActionButton
             label={CLOSE_LABEL}
             icon={CLOSE_ICON}
-            onClick={busy ? undefined : requestClose}
+            onClick={isBusy ? undefined : requestClose}
           />
         </header>
         <div className="pfa-create-fields">
@@ -104,7 +104,7 @@ export function TaskNameDialog({
               value={taskTitle}
               placeholder={placeholder}
               aria-describedby={messageDescription}
-              readOnly={titleReadOnly}
+              readOnly={isTitleReadOnly}
               onChange={({ currentTarget }) =>
                 setTaskTitle(currentTarget.value)
               }
@@ -121,7 +121,7 @@ export function TaskNameDialog({
           <button
             type={SUBMIT_TYPE}
             className="pfa-control"
-            disabled={submitDisabled}
+            disabled={isSubmitDisabled}
           >
             {action}
           </button>

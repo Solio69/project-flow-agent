@@ -23,6 +23,7 @@ import type { MoveTask } from "../../model/task-move";
 import type { ReorderTask } from "../../model/task-reorder";
 import type { TransferReceipt } from "../../model/task-transfer";
 import type { RequestTransferTask } from "../dialogs/TaskTransferDialog";
+import type { RequestArchiveTask } from "../dialogs/TaskArchiveDialog";
 import type { ActionDiagnostic } from "../../model/types";
 import {
   COPY,
@@ -33,7 +34,7 @@ import {
 
 const { diagnosticsTitle, lineLabel } = COPY;
 
-type Panel = { group: LinkedTaskGroup; today: boolean };
+type Panel = { group: LinkedTaskGroup; isToday: boolean };
 type MoveFocus = { control: HTMLButtonElement; notePath: string };
 
 function renderDiagnostic({ line, message }: ActionDiagnostic) {
@@ -49,7 +50,7 @@ function renderDiagnostic({ line, message }: ActionDiagnostic) {
 
 export function TasksList({
   document,
-  showCompleted,
+  showCompleted: isCompletedVisible,
   onShowCompletedChange,
   onOpenNote,
   onSetCompleted,
@@ -58,6 +59,7 @@ export function TasksList({
   onRequestCreateTask,
   onRequestRenameTask,
   onRequestTransferTask,
+  onRequestArchiveTask,
   lastTransfer,
 }: {
   document: TasksSnapshot;
@@ -70,6 +72,7 @@ export function TasksList({
   onRequestCreateTask?: RequestCreateTask;
   onRequestRenameTask?: RequestRenameTask;
   onRequestTransferTask?: RequestTransferTask;
+  onRequestArchiveTask?: RequestArchiveTask;
   lastTransfer?: TransferReceipt;
 }) {
   const { period, groups, diagnostics } = document;
@@ -77,16 +80,16 @@ export function TasksList({
   const panelsRef = useRef<HTMLDivElement>(null);
   const moveFocus = useRef<MoveFocus | null>(null);
   const diagnosticCount = diagnostics.length;
-  const hasDiagnostics = diagnosticCount > 0;
+  const isDiagnosticListVisible = diagnosticCount > 0;
   const todayPanels: Panel[] = [];
   const projectPanels: Panel[] = [];
   for (const group of groups) {
-    const today = isTodayGroup(group);
-    const destination = today ? todayPanels : projectPanels;
-    destination.push({ group, today });
+    const isToday = isTodayGroup(group);
+    const destination = isToday ? todayPanels : projectPanels;
+    destination.push({ group, isToday });
   }
   if (!todayPanels.length)
-    todayPanels.push({ group: EMPTY_TODAY, today: true });
+    todayPanels.push({ group: EMPTY_TODAY, isToday: true });
   const panels = [...todayPanels, ...projectPanels];
 
   const moveFromButton: TaskFromButton | undefined = onMoveTask
@@ -140,7 +143,7 @@ export function TasksList({
 
   function renderPanels() {
     const occurrences = new Map<string, number>();
-    return panels.map(({ group, today }) => {
+    return panels.map(({ group, isToday }) => {
       const { kind, link, title } = group;
       const identity = `${kind}${LIST_KEY_SEPARATOR}${link ?? title}`;
       const occurrence = occurrences.get(identity) ?? 0;
@@ -150,8 +153,8 @@ export function TasksList({
         <TaskPanel
           key={key}
           group={group}
-          today={today}
-          showCompleted={showCompleted}
+          today={isToday}
+          showCompleted={isCompletedVisible}
           focusCompletedToggle={focusCompletedToggle}
           onOpenNote={onOpenNote}
           onSetCompleted={onSetCompleted}
@@ -160,7 +163,8 @@ export function TasksList({
           onRequestCreateTask={onRequestCreateTask}
           onRequestRenameTask={onRequestRenameTask}
           onRequestTransferTask={onRequestTransferTask}
-          transferGroups={groups}
+          onRequestArchiveTask={onRequestArchiveTask}
+          projectGroups={groups}
           lastTransfer={lastTransfer}
         />
       );
@@ -171,11 +175,11 @@ export function TasksList({
     <>
       <TasksToolbar
         period={period}
-        showCompleted={showCompleted}
+        showCompleted={isCompletedVisible}
         onShowCompletedChange={onShowCompletedChange}
         completedToggleRef={completedToggleRef}
       />
-      {hasDiagnostics && renderDiagnostics()}
+      {isDiagnosticListVisible && renderDiagnostics()}
       <div className="pfa-task-panels" ref={panelsRef}>
         {renderPanels()}
       </div>
