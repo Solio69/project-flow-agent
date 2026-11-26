@@ -556,6 +556,7 @@
     gap: 8px;
     padding: 10px 14px 12px;
   }
+  #pfa-current-demo .pfa-dialog footer [data-cancel][hidden] + button { inline-size: 100%; }
   #pfa-current-demo .pfa-fields { display: grid; gap: 9px; overflow-wrap: anywhere; }
   #pfa-current-demo .pfa-fields label { display: grid; gap: 4px; }
   #pfa-current-demo .pfa-fields input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 9px; border: 1px solid var(--pfa-input-border); border-radius: 8px; background: var(--pfa-input-surface); color: var(--pfa-text); font-size: 16px; }
@@ -565,6 +566,10 @@
   #pfa-current-demo .pfa-task-name input:focus {
     --pfa-highlight: var(--pfa-violet);
     outline: none;
+  }
+  #pfa-current-demo .pfa-task-name input:focus-visible {
+    outline: 2px solid var(--pfa-ui-accent);
+    outline-offset: 2px;
   }
   #pfa-current-demo :is(.pfa-today, .pfa-task-name input:focus) {
     border-color: color-mix(in srgb, var(--pfa-highlight) 38%, var(--pfa-surface));
@@ -869,8 +874,8 @@
     popup.querySelector("button:not(:disabled)")?.focus();
   }
 
-  function openDialog({ title, symbol, content, label, danger = false, onSubmit, source }) {
-    modal = { onSubmit, source };
+  function openDialog({ title, symbol, content, label, danger = false, dismissOnBackdrop = false, onSubmit, source }) {
+    modal = { onSubmit, source, dismissOnBackdrop, pressedBackdrop: false };
     dialog.querySelector("h2").textContent = title;
     dialogSymbol.innerHTML = symbol;
     fields.innerHTML = content;
@@ -879,6 +884,7 @@
     confirmButton.hidden = !onSubmit;
     confirmButton.textContent = label || "Сохранить";
     confirmButton.classList.toggle("pfa-danger", danger);
+    cancelButton.hidden = dismissOnBackdrop;
     cancelButton.textContent = onSubmit ? "Отмена" : "Закрыть";
     dialog.showModal();
     paintIcons();
@@ -902,6 +908,7 @@
           <span>Название задачи</span>
         </label>`,
       label: task ? "Сохранить" : "Создать",
+      dismissOnBackdrop: Boolean(task),
       source,
       onSubmit(values) {
         const name = values.get("taskName");
@@ -1190,6 +1197,21 @@
     if (menu && !menu.trigger.parentElement.contains(event.target)) closeMenu();
   });
 
+  function isDialogBackdrop({ target, clientX, clientY }) {
+    if (target !== dialog) return false;
+    const { left, right, top, bottom } = dialog.getBoundingClientRect();
+    return clientX < left || clientX > right || clientY < top || clientY > bottom;
+  }
+
+  dialog.addEventListener("pointerdown", event => {
+    if (modal?.dismissOnBackdrop) modal.pressedBackdrop = isDialogBackdrop(event);
+  });
+  dialog.addEventListener("click", event => {
+    if (!modal?.dismissOnBackdrop) return;
+    const dismiss = modal.pressedBackdrop && isDialogBackdrop(event);
+    modal.pressedBackdrop = false;
+    if (dismiss) dialog.close();
+  });
   form.addEventListener("submit", event => {
     event.preventDefault();
     if (!modal?.onSubmit) return;

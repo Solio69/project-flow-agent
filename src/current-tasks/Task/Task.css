@@ -18,6 +18,10 @@
   border-block-start: 1px solid var(--pfa-border);
 }
 
+.pfa-current-tasks :is(.pfa-task, .pfa-panel-heading h3):focus {
+  outline: none;
+}
+
 .pfa-current-tasks .pfa-task:last-child {
   border-radius: 0 0 13px 13px;
 }

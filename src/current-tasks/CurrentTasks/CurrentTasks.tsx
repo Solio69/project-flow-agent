@@ -1,32 +1,39 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ALERT_ROLE } from "../../constants/html-attributes";
+import { ALERT_ROLE, OMIT_FROM_TAB_ORDER } from "../../constants/html-attributes";
 import { CreateTaskDialog, type CreateTaskProject, type RequestCreateTask } from "../CreateTaskDialog";
 import { TasksList } from "../TasksList";
 import { NoteLink, type OpenNote } from "../NoteLink";
+import { RenameTaskDialog, type RenameSelection, type RequestRenameTask } from "../RenameTaskDialog";
 import type { CompletedVisibility } from "../completed-visibility";
 import type { SetCompleted } from "../task-completion";
 import type { CreateTask } from "../task-create";
-import { canRestoreTaskFocus, focusTaskControl } from "../task-focus";
-import { PANEL_DISCLOSURE_SELECTOR, TASK_CHECKBOX_PATH_SELECTOR, TASK_PANEL_SELECTOR } from "../task-focus.constants";
+import { canRestoreTaskFocus, focusTaskControl, focusTaskElement } from "../task-focus";
+import { PANEL_TITLE_SELECTOR, TASK_PANEL_SELECTOR, TASK_ROW_PATH_SELECTOR } from "../task-focus.constants";
 import type { ReorderTask } from "../task-reorder";
 import type { MoveTask } from "../task-move";
+import type { RenameTask } from "../task-rename";
 import { LOADING_STATUS } from "./constants";
 import { isKindLoading, isKindReady, type CurrentTasksState } from "./state";
 
 type CreateFocus = { control: HTMLButtonElement; taskPath?: string };
+type RenameFocus = { control: HTMLButtonElement; panel: Element | null };
+
+function focusPanelTitle(panel: Element | null) {
+  return focusTaskElement(panel?.querySelector<HTMLHeadingElement>(PANEL_TITLE_SELECTOR));
+}
 
 function focusCreatedTask(control: HTMLButtonElement, path: string): boolean {
   const panel = control.closest(TASK_PANEL_SELECTOR);
-  const checkboxes = panel?.querySelectorAll<HTMLInputElement>(TASK_CHECKBOX_PATH_SELECTOR);
-  const checkbox = Array.from(checkboxes ?? []).find(({ dataset: { taskPath } }) => taskPath === path);
-  if (focusTaskControl(checkbox)) return true;
+  const rows = panel?.querySelectorAll<HTMLLIElement>(TASK_ROW_PATH_SELECTOR);
+  const row = Array.from(rows ?? []).find(({ dataset: { taskPath } }) => taskPath === path);
+  if (focusTaskElement(row)) return true;
 
-  return focusTaskControl(panel?.querySelector<HTMLButtonElement>(PANEL_DISCLOSURE_SELECTOR));
+  return focusPanelTitle(panel);
 }
 
 export function CurrentTasks({
   title, state, completedVisibility: { get, set, subscribe },
-  onOpenNote, onOpenSource, onSetCompleted, onMoveTask, onReorderTask, onCreateTask,
+  onOpenNote, onOpenSource, onSetCompleted, onMoveTask, onReorderTask, onCreateTask, onRenameTask,
 }: {
   title: string;
   state: CurrentTasksState;
@@ -37,10 +44,14 @@ export function CurrentTasks({
   onMoveTask?: MoveTask;
   onReorderTask?: ReorderTask;
   onCreateTask?: CreateTask;
+  onRenameTask?: RenameTask;
 }) {
   const showCompleted = useSyncExternalStore(subscribe, get, get);
   const [createProject, setCreateProject] = useState<CreateTaskProject>();
   const createFocus = useRef<CreateFocus | null>(null);
+  const [renameSelection, setRenameSelection] = useState<RenameSelection>();
+  const renameFocus = useRef<RenameFocus | null>(null);
+  const pageHeading = useRef<HTMLHeadingElement>(null);
   const ready = isKindReady(state);
   const sourcePath = ready ? state.document.sourcePath : undefined;
   const sourceNote = { title, link: sourcePath, notePath: sourcePath };
@@ -48,6 +59,12 @@ export function CurrentTasks({
     ? (project, control) => {
       createFocus.current = { control };
       setCreateProject(project);
+    }
+    : undefined;
+  const requestRenameTask: RequestRenameTask | undefined = ready && onRenameTask
+    ? (task, project, control) => {
+      renameFocus.current = { control, panel: control.closest(TASK_PANEL_SELECTOR) };
+      setRenameSelection({ task, project, sourceMarkdown: state.document.sourceMarkdown });
     }
     : undefined;
 
@@ -63,6 +80,16 @@ export function CurrentTasks({
     if (taskPath && focusCreatedTask(control, taskPath)) return;
     focusTaskControl(control);
   }, [createProject, onCreateTask]);
+
+  useLayoutEffect(() => {
+    const { current: pending } = renameFocus;
+    if (renameSelection || !pending) return;
+
+    const { control, panel } = pending;
+    renameFocus.current = null;
+    if (!canRestoreTaskFocus(control) || focusTaskControl(control)) return;
+    if (!focusPanelTitle(panel)) focusTaskElement(pageHeading.current);
+  }, [renameSelection]);
 
   function closeCreateDialog(taskPath?: string) {
     const { current: pending } = createFocus;
@@ -83,6 +110,7 @@ export function CurrentTasks({
           onMoveTask={onMoveTask}
           onReorderTask={onReorderTask}
           onRequestCreateTask={requestCreateTask}
+          onRequestRenameTask={requestRenameTask}
         />
       );
     }
@@ -95,10 +123,17 @@ export function CurrentTasks({
 
   return (
     <section className="pfa-current-tasks">
-      <header className="pfa-page-heading"><h2><NoteLink note={sourceNote} onOpenNote={onOpenSource} /></h2></header>
+      <header className="pfa-page-heading">
+        <h2 ref={pageHeading} tabIndex={OMIT_FROM_TAB_ORDER}>
+          <NoteLink note={sourceNote} onOpenNote={onOpenSource} />
+        </h2>
+      </header>
       {renderContent()}
       {createProject && (
         <CreateTaskDialog project={createProject} createTask={onCreateTask} onClose={closeCreateDialog} />
+      )}
+      {renameSelection && (
+        <RenameTaskDialog selection={renameSelection} renameTask={onRenameTask} onClose={() => setRenameSelection(undefined)} />
       )}
     </section>
   );

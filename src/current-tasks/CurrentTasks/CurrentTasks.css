@@ -18,6 +18,7 @@
   --pfa-neutral: var(--text-muted, var(--pfa-muted));
   --pfa-caption: color-mix(in srgb, var(--pfa-muted) 88%, var(--pfa-task-surface));
   --pfa-focus: var(--pfa-ui-accent);
+  --pfa-menu-shadow: #382d451e;
   --pfa-circle-size: 34px;
   container-type: inline-size;
   box-sizing: border-box;
@@ -40,6 +41,7 @@
   --pfa-control-ink: #d8dee9;
   --pfa-checkbox-border: #8592a6;
   --pfa-on-accent: var(--pfa-bg);
+  --pfa-menu-shadow: #10141a70;
   --pfa-remaining: #c36d76;
   --pfa-blog: #8fbcbb;
   --pfa-agent: #81a1c1;

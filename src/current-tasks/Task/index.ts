@@ -1,1 +1,1 @@
-export { Task, type MoveTaskFromButton } from "./Task";
+export { Task, type TaskFromButton } from "./Task";

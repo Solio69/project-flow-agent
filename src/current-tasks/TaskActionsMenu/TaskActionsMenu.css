@@ -1,0 +1,57 @@
+.pfa-current-tasks .pfa-task-menu-anchor {
+  position: relative;
+  flex: none;
+}
+
+.pfa-current-tasks .pfa-task-menu-anchor > [aria-expanded="true"] {
+  background: var(--pfa-surface);
+}
+
+.pfa-current-tasks .pfa-task-menu {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: calc(100% + 5px);
+  inset-inline-end: 0;
+  min-inline-size: 150px;
+  padding: 4px;
+  border: 1px solid var(--pfa-border);
+  border-radius: 10px;
+  background: var(--pfa-task-surface);
+  box-shadow: 0 8px 24px var(--pfa-menu-shadow);
+}
+
+.pfa-current-tasks .pfa-task-menu[data-above="true"] {
+  inset-block: auto calc(100% + 5px);
+}
+
+.pfa-current-tasks .pfa-task-menu::before {
+  position: absolute;
+  inset-block-start: -5px;
+  inset-inline-end: calc(var(--pfa-circle-size) / 2 - 5px);
+  inline-size: 8px;
+  block-size: 8px;
+  border-block-start: 1px solid var(--pfa-border);
+  border-inline-start: 1px solid var(--pfa-border);
+  background: var(--pfa-task-surface);
+  transform: rotate(45deg);
+  pointer-events: none;
+  content: "";
+}
+
+.pfa-current-tasks .pfa-task-menu[data-above="true"]::before {
+  inset-block: auto -5px;
+  transform: rotate(225deg);
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control {
+  justify-content: flex-start;
+  inline-size: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: start;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control:hover {
+  background: var(--pfa-surface);
+}

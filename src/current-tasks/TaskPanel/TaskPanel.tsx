@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, type MouseEventHandler } from "react";
-import { BUTTON_TYPE, TRUE_STRING } from "../../constants/html-attributes";
+import { BUTTON_TYPE, OMIT_FROM_TAB_ORDER, TRUE_STRING } from "../../constants/html-attributes";
 import { PLUS_ICON } from "../../constants/icons";
 import { LABEL_SEPARATOR } from "../../constants/text";
 import { ActionButton } from "../ActionButton";
@@ -7,7 +7,8 @@ import type { RequestCreateTask } from "../CreateTaskDialog";
 import { Icon } from "../Icon";
 import { NoteLink, type OpenNote } from "../NoteLink";
 import { ProjectIcon } from "../ProjectIcon";
-import { Task, type MoveTaskFromButton } from "../Task";
+import type { RequestRenameTask } from "../RenameTaskDialog";
+import { Task, type TaskFromButton } from "../Task";
 import { LIST_KEY_SEPARATOR } from "../current-tasks.constants";
 import type { LinkedTask, LinkedTaskGroup } from "../obsidian-current-tasks";
 import { projectAppearance } from "../project-appearance";
@@ -37,6 +38,7 @@ export function TaskPanel({
   onMoveTask,
   onReorderTask,
   onRequestCreateTask,
+  onRequestRenameTask,
 }: {
   group: LinkedTaskGroup;
   today: boolean;
@@ -44,9 +46,10 @@ export function TaskPanel({
   focusCompletedToggle: () => void;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
-  onMoveTask?: MoveTaskFromButton;
+  onMoveTask?: TaskFromButton;
   onReorderTask?: ReorderTask;
   onRequestCreateTask?: RequestCreateTask;
+  onRequestRenameTask?: RequestRenameTask;
 }) {
   const { kind, title, tasks, notePath, link, projectEmoji } = group;
   const { active, completed } = partitionTasksByCompletion(tasks);
@@ -94,12 +97,18 @@ export function TaskPanel({
   }, [focusCompletedToggle, onSetCompleted]);
 
   function renderTask(task: LinkedTask) {
-    const { line, notePath, link, completed } = task;
+    const { line, notePath, link, id, completed, project, projectEmoji: taskEmoji } = task;
     const showGrip = canShowGrip && !completed;
-    const identity = notePath ?? link;
+    const identity = id ?? notePath ?? link;
     const occurrence = identity === undefined ? 0 : taskOccurrences.get(identity) ?? 0;
     if (identity !== undefined) taskOccurrences.set(identity, occurrence + 1);
     const key = identity === undefined ? line : `${occurrence}${LIST_KEY_SEPARATOR}${identity}`;
+    const renameFromButton: TaskFromButton | undefined = onRequestRenameTask
+      ? (selected, control) => onRequestRenameTask(selected, {
+        title: project ?? title,
+        emoji: today ? taskEmoji : projectEmoji,
+      }, control)
+      : undefined;
     return (
       <Task
         key={key}
@@ -109,6 +118,7 @@ export function TaskPanel({
         onOpenNote={onOpenNote}
         onSetCompleted={onSetCompleted}
         onMoveTask={onMoveTask}
+        onRenameTask={renameFromButton}
         onReorderByKey={reorderByKey}
         onTaskMarked={rememberCompletionFocus}
       />
@@ -175,7 +185,7 @@ export function TaskPanel({
     >
       <header className="pfa-panel-heading">
         {!today && renderProjectLead()}
-        <h3>
+        <h3 tabIndex={OMIT_FROM_TAB_ORDER}>
           <NoteLink note={group} onOpenNote={onOpenNote} />
         </h3>
         {!today && renderProjectControls()}

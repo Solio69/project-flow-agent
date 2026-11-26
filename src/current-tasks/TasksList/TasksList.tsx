@@ -2,7 +2,8 @@ import { useLayoutEffect, useRef } from "react";
 import { SPACE } from "../../constants/text";
 import type { RequestCreateTask } from "../CreateTaskDialog";
 import type { OpenNote } from "../NoteLink";
-import type { MoveTaskFromButton } from "../Task";
+import type { RequestRenameTask } from "../RenameTaskDialog";
+import type { TaskFromButton } from "../Task";
 import { TaskPanel } from "../TaskPanel";
 import { TasksToolbar } from "../TasksToolbar";
 import { LIST_KEY_SEPARATOR } from "../current-tasks.constants";
@@ -46,6 +47,7 @@ export function TasksList({
   onMoveTask,
   onReorderTask,
   onRequestCreateTask,
+  onRequestRenameTask,
 }: {
   document: TasksSnapshot;
   showCompleted: boolean;
@@ -55,6 +57,7 @@ export function TasksList({
   onMoveTask?: MoveTask;
   onReorderTask?: ReorderTask;
   onRequestCreateTask?: RequestCreateTask;
+  onRequestRenameTask?: RequestRenameTask;
 }) {
   const { period, groups, diagnostics } = document;
   const completedToggleRef = useRef<HTMLButtonElement>(null);
@@ -73,7 +76,7 @@ export function TasksList({
     todayPanels.push({ group: EMPTY_TODAY, today: true });
   const panels = [...todayPanels, ...projectPanels];
 
-  const moveFromButton: MoveTaskFromButton | undefined = onMoveTask
+  const moveFromButton: TaskFromButton | undefined = onMoveTask
     ? (task, control) => {
       if (hasTaskControlFocus(control)) {
         const { notePath } = task;
@@ -135,6 +138,7 @@ export function TasksList({
           onMoveTask={moveFromButton}
           onReorderTask={onReorderTask}
           onRequestCreateTask={onRequestCreateTask}
+          onRequestRenameTask={onRequestRenameTask}
         />
       );
     });

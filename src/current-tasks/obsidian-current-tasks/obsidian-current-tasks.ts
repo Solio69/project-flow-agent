@@ -85,9 +85,7 @@ export async function readCurrentTasks(
     if (format === TASKS_FORMAT.legacy) return linked;
 
     linked.id = await readCachedTaskId(vault, file);
-    if (!linked.id) {
-      diagnostics.push({ line, message: invalidTaskId });
-    }
+    if (!linked.id) diagnostics.push({ line, message: invalidTaskId });
     if (today) {
       const folder = projectFolder(path, sourcePath);
       const project = folder && projects.get(folder);

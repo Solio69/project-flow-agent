@@ -1,27 +1,29 @@
 import type { ChangeEvent, KeyboardEventHandler, MouseEventHandler } from "react";
-import { BUTTON_TYPE, CHECKBOX_TYPE, TRUE_STRING } from "../../constants/html-attributes";
+import { BUTTON_TYPE, CHECKBOX_TYPE, OMIT_FROM_TAB_ORDER, TRUE_STRING } from "../../constants/html-attributes";
 import { LABEL_COLON, LABEL_SEPARATOR, SPACE } from "../../constants/text";
 import { ActionButton } from "../ActionButton";
 import { Icon } from "../Icon";
 import { NoteLink, type OpenNote } from "../NoteLink";
 import { ProjectIcon } from "../ProjectIcon";
+import { TaskActionsMenu } from "../TaskActionsMenu";
 import type { LinkedTask } from "../obsidian-current-tasks";
 import type { SetCompleted } from "../task-completion";
 import { isEditableTask, type EditableTask } from "../task-edit";
-import { COPY, ICONS, OMIT_FROM_TAB_ORDER, REORDER_KEY_SHORTCUTS } from "./constants";
+import { COPY, ICONS, REORDER_KEY_SHORTCUTS } from "./constants";
 
 const { checkbox, moveToToday, returnToProject, actions, reorder, reorderHint } = COPY;
-const { check, grip, up, down, menu } = ICONS;
+const { check, grip, up, down } = ICONS;
 
-export type MoveTaskFromButton = (task: EditableTask, control: HTMLButtonElement) => void;
+export type TaskFromButton = (task: EditableTask, control: HTMLButtonElement) => void;
 
-export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMoveTask, onReorderByKey, onTaskMarked }: {
+export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMoveTask, onRenameTask, onReorderByKey, onTaskMarked }: {
   task: LinkedTask;
   today: boolean;
   showGrip: boolean;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
-  onMoveTask?: MoveTaskFromButton;
+  onMoveTask?: TaskFromButton;
+  onRenameTask?: TaskFromButton;
   onReorderByKey?: KeyboardEventHandler<HTMLButtonElement>;
   onTaskMarked: (control: HTMLInputElement) => void;
 }) {
@@ -40,6 +42,9 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMove
   const moveIcon = today ? down : up;
   const move: MouseEventHandler<HTMLButtonElement> | undefined = editableTask && onMoveTask && !completed
     ? ({ currentTarget }) => onMoveTask(editableTask, currentTarget)
+    : undefined;
+  const rename = editableTask && onRenameTask
+    ? (control: HTMLButtonElement) => onRenameTask(editableTask, control)
     : undefined;
 
   function changeCompletion({ currentTarget }: ChangeEvent<HTMLInputElement>) {
@@ -78,13 +83,12 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMove
   }
 
   return (
-    <li className="pfa-task" data-completed={completed} data-task-line={line}>
+    <li className="pfa-task" data-completed={completed} data-task-line={line} data-task-path={notePath} tabIndex={OMIT_FROM_TAB_ORDER}>
       {renderGrip()}
       <label className="pfa-task-mark">
         <input
           type={CHECKBOX_TYPE}
           aria-label={checkboxLabel}
-          data-task-path={notePath}
           checked={completed}
           disabled={!canComplete}
           onChange={changeCompletion}
@@ -99,7 +103,7 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMove
       </span>
       <div className="pfa-task-actions">
         <ActionButton label={moveLabel} icon={moveIcon} taskPath={notePath} onClick={move} />
-        <ActionButton label={actionsLabel} icon={menu} />
+        <TaskActionsMenu label={actionsLabel} onRename={rename} />
       </div>
     </li>
   );

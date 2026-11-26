@@ -15,6 +15,7 @@ import {
   openCurrentTasksSource,
   openLinkedNote,
   readCurrentTasks,
+  renameCurrentTask,
   reorderCurrentTask,
   setTaskCompletion,
   watchCurrentTasks,
@@ -23,20 +24,23 @@ import type { SetCompleted } from "./task-completion";
 import { PartialTaskCreation, TASK_CREATE_COPY, type CreateTask, type CreateTaskResult } from "./task-create";
 import { isEditableList, TaskEditError } from "./task-edit";
 import type { MoveTask } from "./task-move";
+import { RenameTaskSourceChanged, TASK_RENAME_COPY, type RenameTask, type RenameTaskResult } from "./task-rename";
 import type { ReorderTask } from "./task-reorder";
 
 const { loading, error: errorState, ready } = CURRENT_TASKS_STATE;
 const {
   sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog,
-  completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog,
+  completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog, renameLog,
 } = ERROR_COPY;
 const { failed: createFailed, busy } = TASK_CREATE_COPY;
+const { failed: renameFailed } = TASK_RENAME_COPY;
 
 type TaskEditHandlers = {
   onSetCompleted?: SetCompleted;
   onMoveTask?: MoveTask;
   onReorderTask?: ReorderTask;
   onCreateTask?: CreateTask;
+  onRenameTask?: RenameTask;
 };
 
 export class CurrentTasksView extends ItemView {
@@ -64,7 +68,7 @@ export class CurrentTasksView extends ItemView {
     this.root ??= createRoot(this.contentEl);
     this.render({ kind: loading });
     this.stopWatching ??= watchCurrentTasks(this.app, (path) => this.relatedPaths.has(path), () => {
-      void this.refresh();
+      if (!this.editInFlight) void this.refresh();
     });
     await this.refresh();
   }
@@ -167,6 +171,21 @@ export class CurrentTasksView extends ItemView {
         });
         return result ?? { ok: false, message: busy, pending: request.pending };
       },
+      onRenameTask: async (request) => {
+        const result = await this.withTaskEdit<RenameTaskResult>(state, async () => {
+          try {
+            const taskPath = await renameCurrentTask(this.app, document, request);
+            return { ok: true, taskPath };
+          } catch (error) {
+            if (error instanceof RenameTaskSourceChanged)
+              return { ok: false, message: error.message, latestSourceMarkdown: error.sourceMarkdown };
+            if (error instanceof TaskEditError) return { ok: false, message: error.message };
+            console.error(renameLog, error);
+            return { ok: false, message: renameFailed };
+          }
+        });
+        return result ?? { ok: false, message: busy };
+      },
     };
   }
 
@@ -188,6 +207,7 @@ export class CurrentTasksView extends ItemView {
   private async withTaskEdit<T>(state: CurrentTasksState, edit: () => Promise<T>) {
     if (this.editInFlight || !this.root) return;
     this.editInFlight = true;
+    this.revision++;
     this.render(state);
     try {
       return await edit();

@@ -1,4 +1,4 @@
-import { createTaskCase } from "./scaffold-data.mjs";
+import { createTaskCase, renameTaskCase } from "./scaffold-data.mjs";
 
 export const legacyPeriodHeading = "**Период планирования**: 23.11.2026 - 29.11.2026";
 
@@ -25,7 +25,9 @@ export const obsoleteTasks = [legacyPeriodHeading, "## [[Старое чтени
 const completionHeader = "\uFEFF---\r\nperiod_start: 2026-11-23\r\nperiod_end: 2026-11-29\r\nnote: 'Текст [ ]'\r\n---\r\n";
 const projectHeading = "## [[Мастерская]]";
 const todayHeading = "## Сегодня";
-const completionRow = (mark) => `-\t[${mark}]  [[Мастерская/project inbox/Черновик|Черновик]]  `;
+const { oldLink, oldTitle, newLink } = renameTaskCase;
+const draftWikiLink = `[[${oldLink}|${oldTitle}]]`;
+const completionRow = (mark) => `-\t[${mark}]  ${draftWikiLink}  `;
 const afterCompletion = "\n\n# Другая часть\n- [ ] Другая запись\n";
 
 export const completionCases = [
@@ -34,6 +36,25 @@ export const completionCases = [
   { unchecked: completionHeader + projectHeading + "\r\n" + completionRow(" ") + afterCompletion,
     checked: completionHeader + projectHeading + "\r\n" + completionRow("x") + afterCompletion },
 ];
+
+export const renameWithoutAliasCases = completionCases.map(({ checked }) => {
+  const before = checked.replace(draftWikiLink, `[[${oldLink}]]`);
+  return { before, after: before.replace(oldLink, newLink) };
+});
+
+const draftAlias = "Черновик для редактора";
+const draftPrefix = "Доработать";
+const aliasedDraftWikiLink = `[[${oldLink}|${draftAlias}]]`;
+const aliasedDraftMarkdown = completionCases[0].unchecked.replace(draftWikiLink, aliasedDraftWikiLink);
+export const renameWithAlias = {
+  before: aliasedDraftMarkdown,
+  after: aliasedDraftMarkdown.replace(oldLink, newLink),
+  title: draftAlias,
+};
+export const taskWithTitlePrefix = {
+  markdown: aliasedDraftMarkdown.replace(aliasedDraftWikiLink, `${draftPrefix} ${aliasedDraftWikiLink}`),
+  title: `${draftPrefix} ${draftAlias}`,
+};
 
 export const ambiguousCompletion = completionHeader + projectHeading + "\r\n" + completionRow(" ")
   + "\r\n- [ ] Ссылка [[A]] и [[B]]" + afterCompletion;

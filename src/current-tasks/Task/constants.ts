@@ -12,6 +12,5 @@ export const COPY = {
 
 const { arrowUp, arrowDown } = KEYBOARD_KEY;
 export const REORDER_KEY_SHORTCUTS = [arrowUp, arrowDown].join(SPACE);
-export const OMIT_FROM_TAB_ORDER = -1;
 
-export const ICONS = { check: "check", grip: "grip-vertical", up: "arrow-up", down: "arrow-down", menu: "ellipsis" } as const;
+export const ICONS = { check: "check", grip: "grip-vertical", up: "arrow-up", down: "arrow-down" } as const;

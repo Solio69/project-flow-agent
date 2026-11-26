@@ -1,4 +1,5 @@
 export { createCurrentTask } from "./create-task";
+export { renameCurrentTask } from "./rename-current-task";
 export {
   moveCurrentTask,
   openCurrentTasksSource,

@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { legacyTasks } from "./current-tasks-markdown.mjs";
 import {
   blogTaskMarkdown, completionReviewNotes, createTaskCase, currentTasksExpected, differentTaskNoteMarkdown,
-  iconizeFixture, projectLinkCase, sourceNotePaths, taskNoteMarkdown,
+  iconizeFixture, projectLinkCase, renameTaskCase, sourceNotePaths, taskNoteMarkdown,
 } from "./scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -40,10 +40,11 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
   const listeners = new Map();
   const openedNotes = [];
   const writes = [];
+  const renames = [];
   const createdNotes = new Map();
-  const source = { path: sourceNotePaths.legacy };
-  const renamedSource = { path: sourceNotePaths.renamed };
-  const note = taskFile("Мастерская/project inbox/Черновик.md");
+  const source = taskFile(sourceNotePaths.legacy);
+  const renamedSource = taskFile(sourceNotePaths.renamed);
+  const note = taskFile(renameTaskCase.oldPath);
   const secondNote = taskFile(second.path);
   const replacementNote = taskFile(replacement.path);
   const blogTaskNote = taskFile(blogTask.path);
@@ -64,6 +65,10 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
     projectLinkDestination: projectNote,
     beforeReadSource: undefined,
     beforeProcess: undefined,
+    unindexedPaths: [],
+    renameFailure: false,
+    renameLinkFailure: false,
+    beforeRenameLinks: undefined,
   };
   const noteReaders = new Map([
     [note, () => controls.taskMarkdown],
@@ -168,6 +173,10 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
   const vault = {
     configDir: ".obsidian",
     adapter: {
+      async exists(path) {
+        const comparable = path.toLowerCase();
+        return controls.unindexedPaths.some((entry) => entry.toLowerCase() === comparable);
+      },
       async read(path) {
         assert.equal(path, ".obsidian/plugins/obsidian-icon-folder/data.json");
         if (!controls.iconize) throw new Error("Iconize data unavailable");
@@ -220,10 +229,13 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
       listeners.delete(ref);
     },
   };
-  const emitModify = (file = source) => {
+  const emit = (event, file, oldPath) => {
     for (const [ref, callback] of listeners) {
-      if (ref.event === "modify") callback(file);
+      if (ref.event === event) callback(file, oldPath);
     }
+  };
+  const emitModify = (file = source) => {
+    emit("modify", file);
     return new Promise(setImmediate);
   };
 
@@ -277,10 +289,28 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
       if (link === blogTask.link) return blogTaskNote;
       if (link === "Черновик") return controls.shortLinkDestination;
       if (createdNotes.has(link)) return createdNotes.get(link).file;
-      return link === "Мастерская/project inbox/Черновик" ? note : null;
+      return relatedNotes.get(link) ?? relatedNotes.get(link + ".md") ?? null;
     },
   };
-  const app = { workspace, vault, metadataCache };
+  const fileManager = {
+    async renameFile(file, path) {
+      if (controls.renameFailure) throw new Error("Filesystem rejected rename");
+      assert.equal(vault.getAbstractFileByPath(path), null);
+      const { path: previous } = file;
+      relatedNotes.delete(previous);
+      file.path = path;
+      relatedNotes.set(path, file);
+      renames.push(path);
+      emit("rename", file, previous);
+      await controls.beforeRenameLinks?.();
+      if (controls.renameLinkFailure) throw new Error("Link update rejected");
+      controls.markdown = controls.markdown
+        .replaceAll(renameTaskCase.oldLink, path.slice(0, -3))
+        .replaceAll("[[Черновик]]", "[[" + path.slice(0, -3) + "]]");
+      emit("modify", source);
+    },
+  };
+  const app = { workspace, vault, metadataCache, fileManager };
   const plugin = new module.exports.default(app);
   await plugin.onload?.();
 
@@ -293,6 +323,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
     listeners,
     openedNotes,
     writes,
+    renames,
     createdNotes,
     note,
     replacementNote,

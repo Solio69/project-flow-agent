@@ -1,6 +1,29 @@
 const taskId = "tsk_example";
+const draftFolder = "Мастерская/project inbox";
+const draftTitle = "Черновик";
+const renamedDraftTitle = "Правки к черновику";
+const draftLink = `${draftFolder}/${draftTitle}`;
+const renamedDraftLink = `${draftFolder}/${renamedDraftTitle}`;
 
 export const taskNoteMarkdown = `---\nid: ${taskId}\n---\n`;
+export const renameTaskCase = {
+  oldPath: `${draftLink}.md`,
+  oldLink: draftLink,
+  oldTitle: draftTitle,
+  newPath: `${renamedDraftLink}.md`,
+  newLink: renamedDraftLink,
+  newTitle: renamedDraftTitle,
+  caseOnlyTitle: "черновик",
+  invalidTitle: "Черновик: правки",
+  body: taskNoteMarkdown + "\nРабочий текст задачи\n",
+  action: /<button(?=[^>]*aria-label="Действия: Черновик")(?![^>]*disabled="")[^>]*>/,
+  invalid: /недопустим/,
+  occupied: /уже есть файл/,
+  unsupportedCase: /только регистра/,
+  changed: /изменилась/,
+  failed: /не удалось переименовать/i,
+  partial: /файл уже переименован/i,
+};
 export const differentTaskNoteMarkdown = "---\nid: tsk_replaced\n---\n";
 export const blogTaskMarkdown = "---\nid: tsk_blog_example\n---\n";
 
@@ -92,17 +115,17 @@ export const taskGripWithIcon = /class="pfa-task-grip"[^>]*><span/g;
 
 export const currentTasksExpected = {
   viewTitle: "Текущие задачи",
-  viewHeading: /<h2>(?:<a [^>]+>)?Текущие задачи(?:<\/a>)?<\/h2>/,
-  linkedSourceHeading: /<h2><a [^>]*>Текущие задачи<\/a><\/h2>/,
+  viewHeading: /<h2\b[^>]*>(?:<a [^>]+>)?Текущие задачи(?:<\/a>)?<\/h2>/,
+  linkedSourceHeading: /<h2\b[^>]*><a [^>]*>Текущие задачи<\/a><\/h2>/,
   legacyTask: /Проверить Черновик/,
-  legacyProject: /<h3><a [^>]+>Мастерская<\/a><\/h3>/,
+  legacyProject: /<h3[^>]*><a [^>]+>Мастерская<\/a><\/h3>/,
   todayGroup: /Сегодня/,
   missingNote: /Пропавшая заметка/,
   obsoleteGroup: /Старое чтение/,
   taskId,
   projectAlias: "Творчество",
-  projectLink: /<h3><a [^>]+>Творчество<\/a><\/h3>/,
-  missingProject: /<h3>Пропавший проект<\/h3>/,
+  projectLink: /<h3[^>]*><a [^>]+>Творчество<\/a><\/h3>/,
+  missingProject: /<h3[^>]*>Пропавший проект<\/h3>/,
   missingSource: /не найдена в этом хранилище/,
   noteOpenFailed: "Не удалось открыть связанную заметку.",
 };
@@ -148,7 +171,7 @@ export const watchFixture = {
   styleFile: "styles.css",
   expectedViewType: /project-flow-agent-current-actions/,
   expectedThemeVariable: /--text-muted/,
-  originalHeading: '<h2><NoteLink note={sourceNote} onOpenNote={onOpenSource} /></h2>',
+  originalHeadingContent: "<NoteLink note={sourceNote} onOpenNote={onOpenSource} />",
   probe: "pfa-watch-probe",
   componentPath: ["src", "current-tasks", "CurrentTasks", "CurrentTasks.tsx"],
 };

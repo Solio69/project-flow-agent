@@ -19,13 +19,13 @@ import {
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
   moveAfterComment, moveCases, moveWithDuplicatePeriod, obsoleteTasks, propertyTasks,
-  reorderCases, reorderInsideEdgeText, reorderWithEdgeText,
+  renameWithAlias, renameWithoutAliasCases, reorderCases, reorderInsideEdgeText, reorderWithEdgeText, taskWithTitlePrefix,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
   createTaskCase,
   aliasedBlogExpected, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown, iconizeFixture,
   moveFeedback, moveProjectConflict, projectLinkCase, reorderTasks, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
-  activeTaskOrder, existingPluginSettings, visibleTaskOrderBeforeWrite, watchFixture,
+  activeTaskOrder, existingPluginSettings, renameTaskCase, visibleTaskOrderBeforeWrite, watchFixture,
 } from "./fixtures/scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -34,7 +34,7 @@ const {
   buildScript, scriptFiles, environmentFile, environmentVariable, configuredWatchOption,
   explicitWatchOption, obsidianDirectory, expectedConfigDirectory, pluginsDirectory,
   pluginId, markerFile, scriptFile, manifestFile, styleFile, expectedViewType,
-  expectedThemeVariable, originalHeading, probe, componentPath,
+  expectedThemeVariable, originalHeadingContent, probe, componentPath,
 } = watchFixture;
 const {
   viewTitle, viewHeading, legacyTask, legacyProject, todayGroup, missingNote, obsoleteGroup,
@@ -252,6 +252,174 @@ test("создание добавляет новый файл и строку в
   assert.equal(activeGroup.tasks[2].completed, true);
   assert.ok(controls.markdown.includes(row));
   assert.equal(writes.length, 1);
+});
+
+test("переименование сохраняет ID, содержание, положение и отметку задачи", async (t) => {
+  const { newTitle, newPath, body, action } = renameTaskCase;
+  for (const { before, after } of renameWithoutAliasCases) {
+    const { controls, mounts, note, renames, writes } = await openTasksFixture(t, before);
+    controls.taskMarkdown = body;
+    const { markup, element: { props } } = mounts.at(-1);
+    const { onRenameTask, state: { document: { groups } } } = props;
+    const [task] = groups.flatMap(({ tasks }) => tasks);
+    const { line } = task;
+    assert.match(markup, action);
+    const result = await onRenameTask({ task, title: newTitle, sourceMarkdown: before });
+    assert.deepEqual({ ...result }, { ok: true, taskPath: newPath });
+    assert.equal(note.path, newPath);
+    assert.deepEqual(renames, [newPath]);
+    assert.deepEqual(writes, []);
+    assert.equal(controls.markdown, after);
+    assert.equal(controls.taskMarkdown, body);
+    const [updatedTask] = mounts.at(-1).element.props.state.document.groups.flatMap(({ tasks }) => tasks);
+    assert.deepEqual({ line: updatedTask.line, id: updatedTask.id, completed: updatedTask.completed },
+      { line, id: taskId, completed: true });
+    assert.equal(updatedTask.title, newTitle);
+  }
+});
+
+test("переименование обновляет путь и сохраняет псевдоним ссылки", async (t) => {
+  const { newTitle, newPath } = renameTaskCase;
+  const { before, after, title } = renameWithAlias;
+  const { controls, mounts } = await openTasksFixture(t, before);
+  const current = () => mounts.at(-1).element.props;
+  const shownTask = () => current().state.document.groups.flatMap(({ tasks }) => tasks)[0];
+  const task = shownTask();
+  const result = await current().onRenameTask({ task, title: newTitle, sourceMarkdown: before });
+
+  assert.equal(result.ok, true);
+  assert.equal(task.title, title);
+  assert.equal(shownTask().title, title);
+  assert.equal(shownTask().notePath, newPath);
+  assert.equal(controls.markdown, after);
+});
+
+test("чтение задачи с ID сохраняет префикс и псевдоним ссылки", async (t) => {
+  const { markdown, title } = taskWithTitlePrefix;
+  const { mounts } = await openTasksFixture(t, markdown);
+  const { groups } = mounts.at(-1).element.props.state.document;
+  const [task] = groups.flatMap(({ tasks }) => tasks);
+  assert.equal(task.id, taskId);
+  assert.equal(task.title, title);
+});
+
+test("переименование доступно рядом с недоступной заметкой", async (t) => {
+  const { newTitle, newPath } = renameTaskCase;
+  const { mounts, note } = await openTasksFixture(t, completionWithOneActiveTask);
+  const { onRenameTask, state: { document: { groups, sourceMarkdown } } } = mounts.at(-1).element.props;
+  const [task, neighbor] = groups.flatMap(({ tasks }) => tasks);
+  assert.equal(neighbor.notePath, undefined);
+
+  const result = await onRenameTask({ task, title: newTitle, sourceMarkdown });
+  assert.equal(result.ok, true);
+  assert.equal(note.path, newPath);
+  const [, updatedNeighbor] = mounts.at(-1).element.props.state.document.groups.flatMap(({ tasks }) => tasks);
+  assert.deepEqual(updatedNeighbor, neighbor);
+});
+
+test("переименование отклоняет неоднозначную строку исходного списка", async (t) => {
+  const { oldPath, newTitle } = renameTaskCase;
+  const { mounts, note, controls, renames } = await openTasksFixture(t, ambiguousCompletion);
+  const { onRenameTask, state: { document: { groups, sourceMarkdown } } } = mounts.at(-1).element.props;
+  const [task] = groups.flatMap(({ tasks }) => tasks);
+  const result = await onRenameTask({ task, title: newTitle, sourceMarkdown });
+
+  assert.equal(result.ok, false);
+  assert.match(result.message, completionFeedback.ambiguous);
+  assert.equal(note.path, oldPath);
+  assert.equal(controls.markdown, sourceMarkdown);
+  assert.deepEqual(renames, []);
+});
+
+test("переименование оставляет файл при занятом пути, недопустимом имени и сбое", async (t) => {
+  const { oldPath, newPath, newTitle, invalidTitle, caseOnlyTitle, invalid, occupied, unsupportedCase, failed } = renameTaskCase;
+  const { unchecked } = completionCases[0];
+  const { controls, mounts, note, renames } = await openTasksFixture(t, unchecked);
+  const { state: { document: { groups } } } = mounts.at(-1).element.props;
+  const [task] = groups.flatMap(({ tasks }) => tasks);
+  const rename = (title) => mounts.at(-1).element.props.onRenameTask({ task, title, sourceMarkdown: unchecked });
+  assert.match((await rename(invalidTitle)).message, invalid);
+  assert.match((await rename(caseOnlyTitle)).message, unsupportedCase);
+  controls.unindexedPaths = [newPath];
+  assert.match((await rename(newTitle)).message, occupied);
+  controls.unindexedPaths = [];
+  controls.renameFailure = true;
+  assert.match((await rename(newTitle)).message, failed);
+  assert.equal(note.path, oldPath);
+  assert.equal(controls.markdown, unchecked);
+  assert.deepEqual(renames, []);
+});
+
+test("переименование показывает целые снимки между событиями файла и ссылки", async (t) => {
+  const { oldPath, newPath, newTitle } = renameTaskCase;
+  const { unchecked } = completionCases[0];
+  const { controls, mounts, emitModify } = await openTasksFixture(t, unchecked);
+  const current = () => mounts.at(-1).element.props;
+  const shownTask = () => current().state.document.groups.flatMap(({ tasks }) => tasks)[0];
+  const { onRenameTask } = current();
+  const delayedRead = Promise.withResolvers();
+  const renamed = Promise.withResolvers();
+  const updateLinks = Promise.withResolvers();
+  controls.beforeRenameLinks = () => {
+    renamed.resolve();
+    return updateLinks.promise;
+  };
+
+  controls.nextRead = delayedRead.promise;
+  await emitModify();
+  const pending = onRenameTask({ task: shownTask(), title: newTitle, sourceMarkdown: unchecked });
+  await renamed.promise;
+  await new Promise(setImmediate);
+  const { notePath: duringRename } = shownTask();
+  delayedRead.resolve(unchecked);
+  await new Promise(setImmediate);
+  const { notePath: afterDelayedRead } = shownTask();
+  updateLinks.resolve();
+  assert.equal((await pending).ok, true);
+  assert.equal(duringRename, oldPath);
+  assert.equal(afterDelayedRead, oldPath);
+  assert.equal(shownTask().notePath, newPath);
+
+  controls.markdown += externalListEdit;
+  await emitModify();
+  assert.equal(current().state.document.sourceMarkdown, controls.markdown);
+});
+
+test("переименование после внешней правки требует повторного подтверждения", async (t) => {
+  const { oldPath, newPath, newTitle, changed } = renameTaskCase;
+  const { unchecked } = completionCases[0];
+  const { controls, mounts, note, renames } = await openTasksFixture(t, unchecked);
+  const { state: { document: { groups } } } = mounts.at(-1).element.props;
+  const [task] = groups.flatMap(({ tasks }) => tasks);
+  const rename = (sourceMarkdown) => mounts.at(-1).element.props.onRenameTask({ task, title: newTitle, sourceMarkdown });
+  controls.markdown += externalListEdit;
+  const first = await rename(unchecked);
+  assert.match(first.message, changed);
+  assert.equal(first.latestSourceMarkdown, controls.markdown);
+  assert.equal(note.path, oldPath);
+  assert.deepEqual(renames, []);
+  const next = await rename(first.latestSourceMarkdown);
+  assert.deepEqual({ ...next }, { ok: true, taskPath: newPath });
+  assert.ok(controls.markdown.endsWith(externalListEdit));
+});
+
+test("отказ обновления ссылок сообщает об уже переименованном файле", async (t) => {
+  const { newPath, newTitle, partial } = renameTaskCase;
+  const { unchecked } = completionCases[0];
+  const { controls, mounts, note, renames, writes } = await openTasksFixture(t, unchecked);
+  const { onRenameTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+  const [task] = groups.flatMap(({ tasks }) => tasks);
+  controls.renameLinkFailure = true;
+  const request = { task, title: newTitle, sourceMarkdown: unchecked };
+  const result = await onRenameTask(request);
+  assert.match(result.message, partial);
+  assert.ok(result.message.includes(newPath));
+  assert.equal(note.path, newPath);
+  assert.equal(controls.markdown, unchecked);
+  const retry = await mounts.at(-1).element.props.onRenameTask(request);
+  assert.equal(retry.ok, false);
+  assert.deepEqual(renames, [newPath]);
+  assert.deepEqual(writes, []);
 });
 
 test("частичный сбой создания допускает добавление того же файла и ID", async (t) => {
@@ -886,7 +1054,7 @@ test("режим VS Code читает локальный путь и перес�
 
   const component = join(fixture, ...componentPath);
   const before = await readFile(component, "utf8");
-  const after = before.replace(originalHeading, `<h2>${probe}</h2>`);
+  const after = before.replace(originalHeadingContent, probe);
   assert.notEqual(after, before, "пробная правка меняет JSX");
   await writeFile(component, after);
   const rebuilt = await waitForBuild(child, async () =>
