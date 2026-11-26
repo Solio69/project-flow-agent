@@ -45,12 +45,13 @@ function hasWikiLinkDelimiter(text: string): boolean {
 
 function readFrontmatter(lines: string[], diagnostics: ActionDiagnostic[]) {
   const fields = new Map<PeriodKey, SourceLine>();
-  if (!isFrontmatterDelimiter(lines[0])) return { fields, bodyStart: 0 };
+  let hasDuplicatePeriodFields = false;
+  if (!isFrontmatterDelimiter(lines[0])) return { fields, bodyStart: 0, hasDuplicatePeriodFields };
 
   const end = lines.findIndex((line, index) => index > 0 && isFrontmatterDelimiter(line));
   if (end === -1) {
     diagnostics.push({ line: 1, message: unclosedFrontmatter });
-    return { fields, bodyStart: 1 };
+    return { fields, bodyStart: 1, hasDuplicatePeriodFields };
   }
 
   for (let index = 1; index < end; index++) {
@@ -60,6 +61,7 @@ function readFrontmatter(lines: string[], diagnostics: ActionDiagnostic[]) {
     if (key !== PERIOD_FIELD.start && key !== PERIOD_FIELD.end) continue;
     const line = index + 1;
     if (fields.has(key)) {
+      hasDuplicatePeriodFields = true;
       diagnostics.push({ line, message: duplicatePeriodField });
       continue;
     }
@@ -68,7 +70,7 @@ function readFrontmatter(lines: string[], diagnostics: ActionDiagnostic[]) {
     fields.set(key, { line, text: quoted?.[2] ?? value });
   }
 
-  return { fields, bodyStart: end + 1 };
+  return { fields, bodyStart: end + 1, hasDuplicatePeriodFields };
 }
 
 function* markdownLines(lines: string[], start: number): Generator<SourceLine> {
@@ -182,7 +184,7 @@ function readTask(
 export function parseCurrentTasks(markdown: string): CurrentTasksDocument {
   const lines = markdown.replace(/^\uFEFF/, "").split(/\r\n?|\n/);
   const diagnostics: ActionDiagnostic[] = [];
-  const { fields, bodyStart } = readFrontmatter(lines, diagnostics);
+  const { fields, bodyStart, hasDuplicatePeriodFields } = readFrontmatter(lines, diagnostics);
   const body = Array.from(markdownLines(lines, bodyStart));
   const format = fields.size ? TASKS_FORMAT.properties : TASKS_FORMAT.legacy;
   const period = format === TASKS_FORMAT.properties
@@ -217,5 +219,5 @@ export function parseCurrentTasks(markdown: string): CurrentTasksDocument {
     const task = readTask(source, format, diagnostics);
     if (task) group.tasks.push(task);
   }
-  return { format, period, groups, diagnostics };
+  return { format, period, hasDuplicatePeriodFields, groups, diagnostics };
 }

@@ -2,6 +2,7 @@ const taskId = "tsk_example";
 
 export const taskNoteMarkdown = `---\nid: ${taskId}\n---\n`;
 export const differentTaskNoteMarkdown = "---\nid: tsk_replaced\n---\n";
+export const blogTaskMarkdown = "---\nid: tsk_blog_example\n---\n";
 
 export const completionReviewNotes = {
   second: { path: "Мастерская/project inbox/Вторая задача.md", link: "Вторая задача" },
@@ -30,6 +31,22 @@ export const sourceNotePaths = {
   renamed: "Текущие задачи.md",
 };
 
+export const moveFeedback = {
+  title: "Вторая задача",
+  toToday: /<button(?=[^>]*aria-label="Добавить в «Сегодня»: Вторая задача")(?![^>]*disabled="")[^>]*>/,
+  toProject: /<button(?=[^>]*aria-label="Вернуть в список проекта: Вторая задача")(?![^>]*disabled="")[^>]*>/,
+  disabledMove: /<button(?=[^>]*aria-label="Добавить в «Сегодня»: Вторая задача")(?=[^>]*disabled="")[^>]*>/,
+  annotation: /текст.*строк/i,
+  todayHeading: /один раздел «Сегодня»/i,
+  projectSection: /определить список проекта/i,
+  duplicatePeriod: /Свойство периода повторяется/,
+};
+
+export const moveProjectConflict = {
+  taskTitle: "Черновик блога",
+  renamedProjectPath: "Блог/Мастерская.md",
+};
+
 export const tasksDesign = {
   period: /23–29 ноября/,
   emptyToday: /На сегодня пока нет задач/,
@@ -37,8 +54,13 @@ export const tasksDesign = {
   projectPanel: 'data-section="project"',
   disclosure: /aria-expanded="true"/,
   history: /<button(?=[^>]*disabled="")(?=[^>]*aria-label="Перенести выполненные в историю")[^>]*>/,
-  showCompleted: /<input(?=[^>]*role="switch")(?=[^>]*checked="")[^>]*>.*?Показывать выполненные/,
+  showCompleted: /<button[^>]*data-show-completed="true"[^>]*>.*?Скрыть выполненные/,
 };
+
+export const completedVisibilityCases = [
+  { visible: true, next: false, label: "Скрыть выполненные" },
+  { visible: false, next: true, label: "Показать выполненные" },
+];
 
 export const taskCompletionOrder = ["Черновик", "Вторая задача"];
 export const visibleTaskOrderBeforeWrite = ["Черновик", "Вторая задача", "Другая активная задача", "Готовая задача"];

@@ -1,22 +1,14 @@
-import { TASKS_FORMAT } from "../current-tasks.constants";
-import { parseCurrentTasks } from "../parse-current-tasks";
 import { TASK_PATTERN, UNCHECKED_MARK } from "../parse-current-tasks.constants";
-import type { CurrentTask, TaskCompletionState } from "../types";
-import { CHECKBOX_START, CHECKED_MARK, COPY, PRESERVED_LINE_ENDING } from "./constants";
+import {
+  assertWritableGroup, findTaskGroup, PRESERVED_LINE_ENDING, readEditableList,
+  rowPartIndex, TASK_EDIT_COPY, TaskEditError, type EditableTask, type TaskRow,
+} from "../task-edit";
+import type { TaskCompletionState } from "../types";
+import { CHECKBOX_START, CHECKED_MARK } from "./constants";
 
-const { invalidList, conflict, ambiguousGroup, interleavedText } = COPY;
+const { conflict, interleavedText } = TASK_EDIT_COPY;
 
-type CompletionRow = { line: number; link: string };
-type CompletionIdentity = CompletionRow & { id: string; notePath: string };
-export type CompletionTarget = CurrentTask & CompletionIdentity;
-export type SetCompleted = (task: CompletionTarget, completed: boolean) => Promise<void>;
-
-export class TaskCompletionError extends Error {}
-
-export function isCompletionTarget(task: CurrentTask & Partial<CompletionIdentity>): task is CompletionTarget {
-  const { id, link, notePath } = task;
-  return Boolean(id && link && notePath);
-}
+export type SetCompleted = (task: EditableTask, completed: boolean) => Promise<void>;
 
 export function partitionTasksByCompletion<T extends TaskCompletionState>(tasks: readonly T[]) {
   const active: T[] = [];
@@ -30,10 +22,6 @@ export function partitionTasksByCompletion<T extends TaskCompletionState>(tasks:
   return { active, completed };
 }
 
-function rowPartIndex(line: number): number {
-  return (line - 1) * 2;
-}
-
 function firstAffectedTextLine(
   parts: readonly string[],
   lines: readonly number[],
@@ -44,7 +32,7 @@ function firstAffectedTextLine(
 
   for (const [index, line] of orderedLines.entries()) {
     const originalIndex = originalIndexByLine.get(line);
-    if (originalIndex === undefined) throw new TaskCompletionError(conflict);
+    if (originalIndex === undefined) throw new TaskEditError(conflict);
     rightmostOriginalIndex = Math.max(rightmostOriginalIndex, originalIndex);
 
     const originalLine = lines[index];
@@ -60,24 +48,18 @@ function firstAffectedTextLine(
   }
 }
 
-export function updateCompletionMark(markdown: string, target: CompletionRow, completed: boolean) {
-  const { line, link } = target;
-  const { format, period, groups, diagnostics } = parseCurrentTasks(markdown);
-  if (format !== TASKS_FORMAT.properties || !period) throw new TaskCompletionError(invalidList);
-
-  const group = groups.find(({ tasks }) => tasks.some((task) => task.line === line && task.link === link));
-  if (!group) throw new TaskCompletionError(conflict);
-
-  const { line: groupLine, nextHeadingLine = Infinity, tasks } = group;
-  const hasAmbiguousRow = diagnostics.some(({ line: problemLine }) =>
-    problemLine !== undefined && problemLine > groupLine && problemLine < nextHeadingLine);
-  if (hasAmbiguousRow) throw new TaskCompletionError(ambiguousGroup);
+export function updateCompletionMark(markdown: string, target: TaskRow, completed: boolean) {
+  const { line } = target;
+  const { groups, diagnostics } = readEditableList(markdown);
+  const group = findTaskGroup(groups, target);
+  assertWritableGroup(group, diagnostics);
+  const { tasks } = group;
 
   const parts = markdown.split(PRESERVED_LINE_ENDING);
   const rowIndex = rowPartIndex(line);
   const row = parts[rowIndex];
   const match = row && TASK_PATTERN.exec(row.trimEnd());
-  if (!match) throw new TaskCompletionError(conflict);
+  if (!match) throw new TaskEditError(conflict);
 
   const [, previousMark] = match;
   if ((previousMark !== UNCHECKED_MARK) === completed) return markdown;
@@ -87,7 +69,7 @@ export function updateCompletionMark(markdown: string, target: CompletionRow, co
   const lines = tasks.map((task) => task.line);
   const orderedLines = [...active, target, ...done].map((task) => task.line);
   const affectedLine = firstAffectedTextLine(parts, lines, orderedLines);
-  if (affectedLine !== undefined) throw new TaskCompletionError(interleavedText(affectedLine));
+  if (affectedLine !== undefined) throw new TaskEditError(interleavedText(affectedLine));
 
   const markIndex = row.indexOf(CHECKBOX_START) + CHECKBOX_START.length;
   const mark = completed ? CHECKED_MARK : UNCHECKED_MARK;

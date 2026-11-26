@@ -21,24 +21,8 @@
 }
 
 .pfa-current-tasks .pfa-completed-toggle {
-  position: relative;
   min-inline-size: 0;
   cursor: pointer;
-}
-
-.pfa-current-tasks .pfa-completed-toggle input {
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: inherit;
-}
-
-.pfa-current-tasks .pfa-completed-toggle:has(input:focus-visible) {
-  outline: 2px solid var(--pfa-focus);
-  outline-offset: 2px;
 }
 
 .pfa-current-tasks .pfa-switch-track {
@@ -61,24 +45,16 @@
   content: "";
 }
 
-.pfa-current-tasks .pfa-completed-toggle input:checked + .pfa-switch-track {
+.pfa-current-tasks .pfa-completed-toggle[data-show-completed="true"] .pfa-switch-track {
   background: var(--pfa-ui-accent);
 }
 
-.pfa-current-tasks .pfa-completed-toggle input:checked + .pfa-switch-track::after {
+.pfa-current-tasks .pfa-completed-toggle[data-show-completed="true"] .pfa-switch-track::after {
   inset-inline-start: 15px;
   background: var(--pfa-task-surface);
 }
 
 @media (forced-colors: active) {
-  .pfa-current-tasks .pfa-completed-toggle input {
-    position: static;
-    inline-size: auto;
-    block-size: auto;
-    opacity: 1;
-    appearance: auto;
-  }
-
   .pfa-current-tasks .pfa-switch-track {
     display: none;
   }

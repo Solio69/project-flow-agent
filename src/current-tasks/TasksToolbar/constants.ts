@@ -1,8 +1,9 @@
 export const COPY = {
   noPeriod: "Период не задан",
-  periodLabel: "Период:",
+  periodLabel: "Период",
   historyLabel: "Перенести выполненные в историю",
-  showCompletedLabel: "Показывать выполненные",
+  showCompletedLabel: "Показать выполненные",
+  hideCompletedLabel: "Скрыть выполненные",
 };
 
 export const ICONS = { calendar: "calendar-days", history: "archive" } as const;

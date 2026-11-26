@@ -11,16 +11,17 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { renderToStaticMarkup } from "react-dom/server";
 import { createCurrentTasksFixture } from "./fixtures/current-tasks.mjs";
 import {
-  aliasedBlogTasks, ambiguousCompletion, completedBeforeAnnotation, completionAcrossAnnotation, completionAlongsideAnnotation,
+  aliasedBlogTasks, ambiguousCompletion, ambiguousMoveCases, completedBeforeAnnotation, completedMove, completionAcrossAnnotation, completionAlongsideAnnotation,
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
-  obsoleteTasks, propertyTasks,
+  moveAfterComment, moveCases, moveWithDuplicatePeriod, obsoleteTasks, propertyTasks,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
-  aliasedBlogExpected, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown,
-  projectLinkCase, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
+  aliasedBlogExpected, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown,
+  moveFeedback, moveProjectConflict, projectLinkCase, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
   visibleTaskOrderBeforeWrite, watchFixture,
 } from "./fixtures/scaffold-data.mjs";
 
@@ -199,6 +200,128 @@ async function openTasksFixture(t, markdown) {
   t.after(() => fixture.activeLeaf.view.onClose());
   return fixture;
 }
+
+function moveShownTask(mounts, taskTitle = moveFeedback.title) {
+  const { onMoveTask, state: { document } } = mounts.at(-1).element.props;
+  const tasks = document.groups.flatMap(({ tasks }) => tasks);
+  const task = tasks.find(({ title }) => title === taskTitle);
+  assert.ok(task);
+  assert.equal(typeof onMoveTask, "function", "вкладка подключает команду переноса");
+  return () => onMoveTask(task);
+}
+
+test("активная задача переносится в «Сегодня» по проекту и возвращается в начало проекта", async (t) => {
+  for (const { initial, moved, returned } of moveCases) {
+    const fixture = await openTasksFixture(t, initial);
+    const { mounts, writes, leaves, ribbonClick } = fixture;
+    const move = moveShownTask(mounts);
+    assert.match(mounts.at(-1).markup, moveFeedback.toToday);
+    await move();
+    await move();
+    assert.deepEqual(writes, [moved]);
+
+    await fixture.activeLeaf.view.onClose();
+    leaves.pop();
+    await ribbonClick();
+    assert.match(mounts.at(-1).markup, moveFeedback.toProject);
+    await moveShownTask(mounts)();
+    assert.deepEqual(writes, [moved, returned]);
+  }
+});
+
+test("перенос отменяется при внешней правке, дубле, пояснении и повторном блоке «Сегодня»", async (t) => {
+  const { initial } = moveCases[0];
+  const { mounts, notices, controls, writes, emitModify, projectNote } = await openTasksFixture(t, initial);
+  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  await moveShownTask(mounts)();
+  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.match(notices.at(-1), completionFeedback.conflict);
+
+  controls.beforeProcess = () => { controls.projectLinkDestination = null; };
+  await moveShownTask(mounts)();
+  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.match(notices.at(-1), moveFeedback.projectSection);
+
+  controls.projectLinkDestination = projectNote;
+  controls.beforeProcess = undefined;
+
+  const { duplicate, annotation, todayHeading } = ambiguousMoveCases;
+  for (const [markdown, notice] of [
+    [duplicate, completionFeedback.duplicate],
+    [annotation, moveFeedback.annotation],
+    [todayHeading, moveFeedback.todayHeading],
+  ]) {
+    controls.markdown = markdown;
+    await emitModify();
+    await moveShownTask(mounts)();
+    assert.equal(controls.markdown, markdown);
+    assert.match(notices.at(-1), notice);
+  }
+  assert.deepEqual(writes, []);
+});
+
+test("перенос отложен для уже выполненной задачи", async (t) => {
+  const { mounts, writes } = await openTasksFixture(t, completedMove);
+  const { markup } = mounts.at(-1);
+  assert.match(markup, moveFeedback.disabledMove);
+  assert.deepEqual(writes, []);
+});
+
+test("перенос сохраняет задачу рядом с предшествующим комментарием", async (t) => {
+  const { controls, mounts, notices, writes } = await openTasksFixture(t, moveAfterComment);
+  await moveShownTask(mounts)();
+  assert.deepEqual(writes, []);
+  assert.equal(controls.markdown, moveAfterComment);
+  assert.match(notices.at(-1), moveFeedback.annotation);
+});
+
+test("перенос отменяется, когда другой проект переезжает в ту же папку перед записью", async (t) => {
+  const { initial } = moveCases[0];
+  const { controls, mounts, notices, projectNote, writes } = await openTasksFixture(t, initial);
+  const { taskTitle, renamedProjectPath } = moveProjectConflict;
+  controls.beforeProcess = () => { projectNote.path = renamedProjectPath; };
+
+  await moveShownTask(mounts, taskTitle)();
+  assert.deepEqual(writes, []);
+  assert.equal(controls.markdown, initial);
+  assert.match(notices.at(-1), moveFeedback.projectSection);
+});
+
+test("дубль свойства периода оставляет просмотр и отключает команды записи", async (t) => {
+  const { mounts, writes } = await openTasksFixture(t, moveWithDuplicatePeriod);
+  const { markup, element: { props } } = mounts.at(-1);
+  const { onMoveTask, onSetCompleted } = props;
+  assert.match(markup, moveFeedback.duplicatePeriod);
+  assert.match(markup, moveFeedback.disabledMove);
+  assert.equal(onMoveTask, undefined);
+  assert.equal(onSetCompleted, undefined);
+  assert.deepEqual(writes, []);
+});
+
+test("переключатель называет следующее действие с выполненными задачами", async () => {
+  const { outputFiles: [bundle] } = await build({
+    absWorkingDir: project,
+    entryPoints: ["src/current-tasks/TasksToolbar/index.ts"],
+    bundle: true,
+    format: "cjs",
+    external: ["obsidian", "react"],
+    write: false,
+  });
+  const module = { exports: {} };
+  const requireToolbar = (name) => name === "obsidian" ? {} : require(name);
+  runInNewContext(bundle.text, { module, exports: module.exports, require: requireToolbar });
+  const { TasksToolbar } = module.exports;
+
+  for (const { visible, next, label } of completedVisibilityCases) {
+    let requested;
+    const toolbar = TasksToolbar({ showCompleted: visible, onShowCompletedChange: (value) => { requested = value; } });
+    assert.ok(renderToStaticMarkup(toolbar).includes(label));
+    const toggle = toolbar.props.children.find(({ props }) => typeof props.onClick === "function");
+    assert.ok(toggle);
+    toggle.props.onClick();
+    assert.equal(requested, next);
+  }
+});
 
 test("отметка записывает порядок выполненных, снятие возвращает задачу в конец активных", async (t) => {
   const [first, second] = taskCompletionOrder;

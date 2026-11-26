@@ -7,17 +7,25 @@ import {
   type CurrentTasksState,
 } from "./CurrentTasks";
 import { ERROR_COPY } from "./current-tasks-view.constants";
-import { CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW, TASKS_FORMAT } from "./current-tasks.constants";
+import { CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW } from "./current-tasks.constants";
 import {
+  moveCurrentTask,
   openLinkedNote,
   readCurrentTasks,
   setTaskCompletion,
   watchCurrentTasks,
 } from "./obsidian-current-tasks";
-import { TaskCompletionError, type SetCompleted } from "./task-completion";
+import type { SetCompleted } from "./task-completion";
+import { isEditableList, TaskEditError } from "./task-edit";
+import type { MoveTask } from "./task-move";
 
 const { loading, error: errorState, ready } = CURRENT_TASKS_STATE;
-const { sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog, completionLog, completionFailed } = ERROR_COPY;
+const {
+  sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog,
+  completionLog, completionFailed, moveLog, moveFailed,
+} = ERROR_COPY;
+
+type TaskEditHandlers = { onSetCompleted?: SetCompleted; onMoveTask?: MoveTask };
 
 export class CurrentTasksView extends ItemView {
   navigation = true;
@@ -26,7 +34,7 @@ export class CurrentTasksView extends ItemView {
   private stopWatching?: () => void;
   private relatedPaths = new Set<string>();
   private revision = 0;
-  private completionInFlight = false;
+  private editInFlight = false;
 
   getViewType(): string {
     return CURRENT_TASKS_VIEW;
@@ -91,33 +99,49 @@ export class CurrentTasksView extends ItemView {
       }
     };
 
-    const onSetCompleted = this.completionHandler(state);
-    this.root?.render(<CurrentTasks title={CURRENT_TASKS_TITLE} state={state} onOpenNote={onOpenNote} onSetCompleted={onSetCompleted} />);
+    const { onSetCompleted, onMoveTask } = this.taskEditHandlers(state);
+    this.root?.render(
+      <CurrentTasks
+        title={CURRENT_TASKS_TITLE}
+        state={state}
+        onOpenNote={onOpenNote}
+        onSetCompleted={onSetCompleted}
+        onMoveTask={onMoveTask}
+      />,
+    );
   }
 
-  private completionHandler(state: CurrentTasksState): SetCompleted | undefined {
-    if (this.completionInFlight || !isKindReady(state)) return;
+  private taskEditHandlers(state: CurrentTasksState): TaskEditHandlers {
+    if (this.editInFlight || !isKindReady(state)) return {};
     const { document } = state;
-    const { format, period } = document;
-    if (format !== TASKS_FORMAT.properties || !period) return;
+    if (!isEditableList(document)) return {};
 
-    return async (task, completed) => {
-      if (this.completionInFlight || !this.root) return;
-      this.completionInFlight = true;
-      this.render(state);
-      try {
-        await setTaskCompletion(this.app, document, task, completed);
-      } catch (error) {
-        if (error instanceof TaskCompletionError) {
-          new Notice(error.message);
-        } else {
-          console.error(completionLog, error);
-          new Notice(completionFailed);
-        }
-      } finally {
-        this.completionInFlight = false;
-        if (this.root) await this.refresh();
-      }
+    return {
+      onSetCompleted: (task, completed) => this.runTaskEdit(
+        state, () => setTaskCompletion(this.app, document, task, completed), completionLog, completionFailed,
+      ),
+      onMoveTask: (task) => this.runTaskEdit(
+        state, () => moveCurrentTask(this.app, document, task), moveLog, moveFailed,
+      ),
     };
+  }
+
+  private async runTaskEdit(state: CurrentTasksState, edit: () => Promise<void>, log: string, message: string) {
+    if (this.editInFlight || !this.root) return;
+    this.editInFlight = true;
+    this.render(state);
+    try {
+      await edit();
+    } catch (error) {
+      if (error instanceof TaskEditError) {
+        new Notice(error.message);
+      } else {
+        console.error(log, error);
+        new Notice(message);
+      }
+    } finally {
+      this.editInFlight = false;
+      if (this.root) await this.refresh();
+    }
   }
 }

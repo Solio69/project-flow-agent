@@ -1,4 +1,5 @@
 export {
+  moveCurrentTask,
   openLinkedNote,
   readCurrentTasks,
   setTaskCompletion,

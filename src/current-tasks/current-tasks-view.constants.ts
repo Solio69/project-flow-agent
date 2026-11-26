@@ -8,4 +8,6 @@ export const ERROR_COPY = {
   openLog: "Project Flow Agent: открытие связанной заметки",
   completionLog: "Project Flow Agent: запись отметки выполнения",
   completionFailed: "Не удалось изменить отметку выполнения. Список обновится.",
+  moveLog: "Project Flow Agent: перенос текущей задачи",
+  moveFailed: "Не удалось перенести задачу. Список обновится.",
 };

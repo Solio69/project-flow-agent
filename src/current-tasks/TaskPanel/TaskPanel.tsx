@@ -1,14 +1,16 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { BUTTON_TYPE, TRUE_STRING } from "../../constants/html-attributes";
+import { LABEL_SEPARATOR } from "../../constants/text";
+import { ActionButton } from "../ActionButton";
 import { Icon } from "../Icon";
 import { NoteLink, type OpenNote } from "../NoteLink";
-import { PreviewAction } from "../PreviewAction";
-import { Task } from "../Task";
+import { Task, type MoveTaskFromButton } from "../Task";
 import { LIST_KEY_SEPARATOR } from "../current-tasks.constants";
 import type { LinkedTask, LinkedTaskGroup } from "../obsidian-current-tasks";
 import { projectAppearance } from "../project-appearance";
 import { partitionTasksByCompletion, type SetCompleted } from "../task-completion";
-import { COPY, ENABLED_TASK_CONTROL, ICONS, MIN_TASKS_FOR_GRIP } from "./constants";
+import { canRestoreTaskFocus, focusTaskControl, hasTaskControlFocus } from "../task-focus";
+import { COPY, ENABLED_TASK_CONTROL, ICONS, MIN_TASKS_FOR_GRIP, QUOTED_TITLE_PREFIX, QUOTED_TITLE_SUFFIX } from "./constants";
 
 const { emptyToday, emptyProject, allTasksCompleted, collapse, expand, create, archive } = COPY;
 const { chevron, add, archive: archiveIcon, folder } = ICONS;
@@ -26,6 +28,7 @@ export function TaskPanel({
   focusCompletedToggle,
   onOpenNote,
   onSetCompleted,
+  onMoveTask,
 }: {
   group: LinkedTaskGroup;
   today: boolean;
@@ -33,6 +36,7 @@ export function TaskPanel({
   focusCompletedToggle: () => void;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
+  onMoveTask?: MoveTaskFromButton;
 }) {
   const { kind, title, tasks, notePath, link } = group;
   const { active, completed } = partitionTasksByCompletion(tasks);
@@ -45,11 +49,14 @@ export function TaskPanel({
   const [expanded, setExpanded] = useState(true);
   const listRef = useRef<HTMLUListElement>(null);
   const completionFocus = useRef<CompletionFocus | null>(null);
-  const disclosure = `${expanded ? collapse : expand} «${title}»`;
+  const quotedTitle = `${QUOTED_TITLE_PREFIX}${title}${QUOTED_TITLE_SUFFIX}`;
+  const disclosure = `${expanded ? collapse : expand}${quotedTitle}`;
+  const createLabel = `${create}${LABEL_SEPARATOR}${title}`;
+  const archiveLabel = `${archive}${quotedTitle}`;
   const taskOccurrences = new Map<string, number>();
 
   function rememberCompletionFocus(control: HTMLInputElement) {
-    if (showCompleted || control.ownerDocument.activeElement !== control) return;
+    if (showCompleted || !hasTaskControlFocus(control)) return;
     const position = enabledTaskControls(listRef.current).indexOf(control);
     if (position < 0) return;
     completionFocus.current = { control, position };
@@ -61,17 +68,11 @@ export function TaskPanel({
     completionFocus.current = null;
 
     const { control, position } = pending;
-    const { activeElement, body } = control.ownerDocument;
-    if (activeElement !== control && activeElement !== body) return;
-    if (control.isConnected && !control.disabled) {
-      control.focus();
-      return;
-    }
+    if (!canRestoreTaskFocus(control) || focusTaskControl(control)) return;
 
     const controls = enabledTaskControls(listRef.current);
     const next = controls[Math.min(position, controls.length - 1)];
-    if (next) next.focus();
-    else focusCompletedToggle();
+    if (!focusTaskControl(next)) focusCompletedToggle();
   }, [focusCompletedToggle, onSetCompleted]);
 
   function renderTask(task: LinkedTask) {
@@ -89,6 +90,7 @@ export function TaskPanel({
         showGrip={showGrip}
         onOpenNote={onOpenNote}
         onSetCompleted={onSetCompleted}
+        onMoveTask={onMoveTask}
         onTaskMarked={rememberCompletionFocus}
       />
     );
@@ -105,8 +107,8 @@ export function TaskPanel({
   function renderProjectControls() {
     return (
       <div className="pfa-panel-actions">
-        <PreviewAction label={`${create}: ${title}`} icon={add} />
-        <PreviewAction label={`${archive} «${title}»`} icon={archiveIcon} />
+        <ActionButton label={createLabel} icon={add} />
+        <ActionButton label={archiveLabel} icon={archiveIcon} />
       </div>
     );
   }

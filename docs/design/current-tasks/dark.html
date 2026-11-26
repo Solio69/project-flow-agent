@@ -55,9 +55,9 @@
           Перенести выполненные в историю
         </button>
         <label class="pfa-button pfa-completed-toggle cursor-interaction">
-          <input type="checkbox" role="switch" class="cursor-interaction" data-show-completed checked>
+          <input type="checkbox" role="switch" aria-label="Показывать выполненные" class="cursor-interaction" data-show-completed checked>
           <span class="pfa-switch-track" aria-hidden="true"></span>
-          <span>Показывать выполненные</span>
+          <span data-completed-label>Скрыть выполненные</span>
         </label>
       </div>
     </header>
@@ -641,6 +641,7 @@
   const calendarSelection = periodPicker.querySelector("[data-calendar-selection]");
   const periodApply = periodPicker.querySelector("[data-action='apply-period']");
   const completedToggle = root.querySelector("[data-show-completed]");
+  const completedLabel = root.querySelector("[data-completed-label]");
   const lists = root.querySelector("[data-lists]");
   const dialog = root.querySelector("dialog");
   const form = dialog.querySelector("form");
@@ -807,6 +808,7 @@
   function render() {
     closeMenu();
     completedToggle.checked = state.showCompleted;
+    completedLabel.textContent = state.showCompleted ? "Скрыть выполненные" : "Показать выполненные";
     periodTrigger.querySelector("[data-period]").textContent = periodText();
     periodClear.hidden = !state.start || !state.end;
     lists.innerHTML = `<section class="pfa-panel pfa-today" aria-labelledby="pfa-today-heading">

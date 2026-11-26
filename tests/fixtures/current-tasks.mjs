@@ -6,7 +6,7 @@ import { build } from "esbuild";
 import { renderToStaticMarkup } from "react-dom/server";
 import { legacyTasks } from "./current-tasks-markdown.mjs";
 import {
-  completionReviewNotes, currentTasksExpected, differentTaskNoteMarkdown,
+  blogTaskMarkdown, completionReviewNotes, currentTasksExpected, differentTaskNoteMarkdown,
   projectLinkCase, sourceNotePaths, taskNoteMarkdown,
 } from "./scaffold-data.mjs";
 
@@ -57,13 +57,14 @@ export async function createCurrentTasksFixture() {
     taskMarkdown: taskNoteMarkdown,
     secondTaskMarkdown: differentTaskNoteMarkdown,
     shortLinkDestination: note,
+    projectLinkDestination: projectNote,
     beforeProcess: undefined,
   };
   const noteReaders = new Map([
     [note, () => controls.taskMarkdown],
     [secondNote, () => controls.secondTaskMarkdown],
     [replacementNote, () => differentTaskNoteMarkdown],
-    [blogTaskNote, () => taskNoteMarkdown],
+    [blogTaskNote, () => blogTaskMarkdown],
   ]);
   const relatedNotes = new Map([
     projectNote, blogNote, ...noteReaders.keys(),
@@ -229,7 +230,7 @@ export async function createCurrentTasksFixture() {
   const metadataCache = {
     getFirstLinkpathDest(link, from) {
       assert.ok([source.path, renamedSource.path].includes(from));
-      if (projectLinks.includes(link)) return projectNote;
+      if (projectLinks.includes(link)) return controls.projectLinkDestination;
       if (link === second.link) return secondNote;
       if (link === blog.link) return blogNote;
       if (link === blogTask.link) return blogTaskNote;

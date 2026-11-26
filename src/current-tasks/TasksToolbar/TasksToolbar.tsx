@@ -1,11 +1,12 @@
-import type { ChangeEvent, Ref } from "react";
-import { CHECKBOX_TYPE, SWITCH_ROLE, TRUE_STRING } from "../../constants/html-attributes";
+import type { Ref } from "react";
+import { BUTTON_TYPE, TRUE_STRING } from "../../constants/html-attributes";
+import { LABEL_SEPARATOR } from "../../constants/text";
+import { ActionButton } from "../ActionButton";
 import { Icon } from "../Icon";
-import { PreviewAction } from "../PreviewAction";
 import type { TaskPeriod } from "../types";
 import { COPY, DAY, DAY_MONTH, FULL_DATE, ICONS } from "./constants";
 
-const { noPeriod, periodLabel, historyLabel, showCompletedLabel } = COPY;
+const { noPeriod, periodLabel, historyLabel, showCompletedLabel, hideCompletedLabel } = COPY;
 const { calendar, history } = ICONS;
 
 function periodText({ start, end }: TaskPeriod): string {
@@ -25,34 +26,29 @@ export function TasksToolbar({ period, showCompleted, onShowCompletedChange, com
   period?: TaskPeriod;
   showCompleted: boolean;
   onShowCompletedChange: (visible: boolean) => void;
-  completedToggleRef: Ref<HTMLInputElement>;
+  completedToggleRef: Ref<HTMLButtonElement>;
 }) {
   const text = period ? periodText(period) : noPeriod;
-
-  function changeCompletedVisibility({ currentTarget }: ChangeEvent<HTMLInputElement>) {
-    const { checked } = currentTarget;
-    onShowCompletedChange(checked);
-  }
+  const completedLabel = showCompleted ? hideCompletedLabel : showCompletedLabel;
 
   return (
     <div className="pfa-tasks-toolbar">
       <p className="pfa-period">
         <Icon name={calendar} />
-        <span className="pfa-period-label">{periodLabel} </span>
+        <span className="pfa-period-label">{periodLabel}{LABEL_SEPARATOR}</span>
         {text}
       </p>
-      <PreviewAction label={historyLabel} icon={history} showLabel />
-      <label className="pfa-completed-toggle">
-        <input
-          ref={completedToggleRef}
-          type={CHECKBOX_TYPE}
-          role={SWITCH_ROLE}
-          checked={showCompleted}
-          onChange={changeCompletedVisibility}
-        />
+      <ActionButton label={historyLabel} icon={history} showLabel />
+      <button
+        ref={completedToggleRef}
+        type={BUTTON_TYPE}
+        className="pfa-completed-toggle"
+        data-show-completed={showCompleted}
+        onClick={() => onShowCompletedChange(!showCompleted)}
+      >
         <span className="pfa-switch-track" aria-hidden={TRUE_STRING} />
-        <span>{showCompletedLabel}</span>
-      </label>
+        <span>{completedLabel}</span>
+      </button>
     </div>
   );
 }

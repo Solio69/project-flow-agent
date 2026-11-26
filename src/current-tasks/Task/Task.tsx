@@ -1,30 +1,41 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, MouseEventHandler } from "react";
 import { CHECKBOX_TYPE, TRUE_STRING } from "../../constants/html-attributes";
+import { LABEL_COLON, LABEL_SEPARATOR, SPACE } from "../../constants/text";
+import { ActionButton } from "../ActionButton";
 import { Icon } from "../Icon";
 import { NoteLink, type OpenNote } from "../NoteLink";
-import { PreviewAction } from "../PreviewAction";
 import type { LinkedTask } from "../obsidian-current-tasks";
 import { projectAppearance } from "../project-appearance";
-import { isCompletionTarget, type SetCompleted } from "../task-completion";
+import type { SetCompleted } from "../task-completion";
+import { isEditableTask, type EditableTask } from "../task-edit";
 import { COPY, ICONS } from "./constants";
 
 const { checkbox, moveToToday, returnToProject, actions } = COPY;
 const { check, grip, up, down, menu } = ICONS;
 
-export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onTaskMarked }: {
+export type MoveTaskFromButton = (task: EditableTask, control: HTMLButtonElement) => void;
+
+export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onMoveTask, onTaskMarked }: {
   task: LinkedTask;
   today: boolean;
   showGrip: boolean;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
+  onMoveTask?: MoveTaskFromButton;
   onTaskMarked: (control: HTMLInputElement) => void;
 }) {
-  const { completed, project, projectPath, title } = task;
+  const { completed, project, projectPath, title, notePath } = task;
   const appearance = projectAppearance(projectPath);
-  const editableTask = isCompletionTarget(task) ? task : undefined;
+  const editableTask = isEditableTask(task) ? task : undefined;
   const canComplete = Boolean(editableTask && onSetCompleted);
-  const moveLabel = today ? returnToProject : moveToToday;
+  const checkboxLabel = `${checkbox}${LABEL_SEPARATOR}${title}`;
+  const moveAction = today ? returnToProject : moveToToday;
+  const moveLabel = `${moveAction}${LABEL_SEPARATOR}${title}`;
+  const actionsLabel = `${actions}${LABEL_SEPARATOR}${title}`;
   const moveIcon = today ? down : up;
+  const move: MouseEventHandler<HTMLButtonElement> | undefined = editableTask && onMoveTask && !completed
+    ? ({ currentTarget }) => onMoveTask(editableTask, currentTarget)
+    : undefined;
 
   function changeCompletion({ currentTarget }: ChangeEvent<HTMLInputElement>) {
     if (!editableTask || !onSetCompleted) return;
@@ -42,7 +53,7 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onTask
             {appearance.emoji}
           </span>
         )}
-        <strong className="pfa-task-project">{project}:</strong>{" "}
+        <strong className="pfa-task-project">{project}{LABEL_COLON}</strong>{SPACE}
       </>
     );
   }
@@ -55,7 +66,7 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onTask
       <label className="pfa-task-mark">
         <input
           type={CHECKBOX_TYPE}
-          aria-label={`${checkbox}: ${title}`}
+          aria-label={checkboxLabel}
           checked={completed}
           disabled={!canComplete}
           onChange={changeCompletion}
@@ -67,8 +78,8 @@ export function Task({ task, today, showGrip, onOpenNote, onSetCompleted, onTask
         <span className="pfa-task-title"><NoteLink note={task} onOpenNote={onOpenNote} /></span>
       </span>
       <div className="pfa-task-actions">
-        <PreviewAction label={`${moveLabel}: ${title}`} icon={moveIcon} />
-        <PreviewAction label={`${actions}: ${title}`} icon={menu} />
+        <ActionButton label={moveLabel} icon={moveIcon} taskPath={notePath} onClick={move} />
+        <ActionButton label={actionsLabel} icon={menu} />
       </div>
     </li>
   );

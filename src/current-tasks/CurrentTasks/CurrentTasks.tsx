@@ -3,14 +3,16 @@ import { ALERT_ROLE } from "../../constants/html-attributes";
 import { TasksList } from "../TasksList";
 import type { OpenNote } from "../NoteLink";
 import type { SetCompleted } from "../task-completion";
+import type { MoveTask } from "../task-move";
 import { LOADING_STATUS } from "./constants";
 import { isKindLoading, isKindReady, type CurrentTasksState } from "./state";
 
-export function CurrentTasks({ title, state, onOpenNote, onSetCompleted }: {
+export function CurrentTasks({ title, state, onOpenNote, onSetCompleted, onMoveTask }: {
   title: string;
   state: CurrentTasksState;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
+  onMoveTask?: MoveTask;
 }) {
   const [showCompleted, setShowCompleted] = useState(true);
 
@@ -24,6 +26,7 @@ export function CurrentTasks({ title, state, onOpenNote, onSetCompleted }: {
           onShowCompletedChange={setShowCompleted}
           onOpenNote={onOpenNote}
           onSetCompleted={onSetCompleted}
+          onMoveTask={onMoveTask}
         />
       );
     }

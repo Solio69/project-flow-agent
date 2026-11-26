@@ -28,6 +28,7 @@ export interface CurrentTaskGroup<Task extends CurrentTask = CurrentTask> {
 export interface CurrentTasksDocument<Group extends CurrentTaskGroup = CurrentTaskGroup> {
   format: TasksFormat;
   period?: TaskPeriod;
+  hasDuplicatePeriodFields: boolean;
   groups: Group[];
   diagnostics: ActionDiagnostic[];
 }

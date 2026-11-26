@@ -71,3 +71,44 @@ export const aliasedBlogTasks = completionHeader + [
   "- [ ] [[Блог/Черновик блога]]",
   "## [[Блог/Блог|Контент]]",
 ].join("\r\n");
+
+const blogHeading = "## [[Блог/Блог|Контент]]";
+const activeBlogRow = "- [ ] [[Блог/Черновик блога]]";
+const draftRow = completionRow(" ");
+const moveRow = secondCompletionRow(" ");
+const moveDocument = (todayRows, projectRows) => completionHeader + [
+  todayHeading, ...todayRows, projectHeading, ...projectRows, blogHeading,
+].join("\r\n") + afterCompletion;
+const emptyTodayMove = [todayHeading, projectHeading, moveRow];
+
+export const moveCases = [
+  {
+    initial: moveDocument([draftRow, activeBlogRow, previouslyCompleted], [remainingActive, moveRow]),
+    moved: moveDocument([draftRow, moveRow, activeBlogRow, previouslyCompleted], [remainingActive]),
+    returned: moveDocument([draftRow, activeBlogRow, previouslyCompleted], [moveRow, remainingActive]),
+  },
+  {
+    initial: moveDocument([activeBlogRow, previouslyCompleted], [moveRow]),
+    moved: moveDocument([activeBlogRow, moveRow, previouslyCompleted], []),
+    returned: moveDocument([activeBlogRow, previouslyCompleted], [moveRow]),
+  },
+  {
+    initial: completionHeader + emptyTodayMove.join("\r\n"),
+    moved: completionHeader + [todayHeading, moveRow, projectHeading].join("\r\n"),
+    returned: completionHeader + emptyTodayMove.join("\r\n"),
+  },
+];
+
+export const completedMove = moveDocument([], [secondCompletionRow("x")]);
+export const ambiguousMoveCases = {
+  duplicate: moveDocument([moveRow], [moveRow]),
+  annotation: moveDocument([], [moveRow + taskAnnotation + remainingActive]),
+  todayHeading: moveDocument([todayHeading], [moveRow]),
+};
+
+const commentForNextTask = "\r\n<!-- Пояснение к следующей задаче -->\r\n";
+export const moveAfterComment = moveDocument([], [remainingActive + commentForNextTask + moveRow]);
+export const moveWithDuplicatePeriod = moveCases[0].initial.replace(
+  "period_end:",
+  "period_start: 2026-11-24\r\nperiod_end:",
+);
