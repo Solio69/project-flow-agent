@@ -18,8 +18,8 @@
 
 ```text
 src/main.ts                              регистрация плагина и открытие вкладки
-src/current-actions/current-actions-view.tsx  ItemView и подключение React
-src/current-actions/CurrentActions.tsx        содержимое каркаса
+src/current-tasks/current-tasks-view.tsx  ItemView и подключение React
+src/current-tasks/CurrentTasks.tsx        содержимое каркаса
 src/styles.css                           стили плагина
 esbuild.config.mjs                       обычная сборка и watch
 manifest.json                            метаданные плагина

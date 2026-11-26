@@ -1,0 +1,66 @@
+.pfa-current-tasks .pfa-transfer-summary {
+  display: grid;
+  gap: 4px;
+}
+
+.pfa-current-tasks .pfa-transfer-summary p,
+.pfa-current-tasks .pfa-transfer-projects legend {
+  color: var(--pfa-caption);
+  font-size: 12px;
+}
+
+.pfa-current-tasks .pfa-transfer-projects {
+  display: grid;
+  gap: 6px;
+  min-inline-size: 0;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.pfa-current-tasks .pfa-transfer-projects legend {
+  margin-block-end: 6px;
+  padding: 0;
+}
+
+.pfa-current-tasks .pfa-create-fields .pfa-transfer-projects label {
+  grid-template-columns: 21px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-block-size: 42px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--pfa-border);
+  border-radius: 8px;
+  color: var(--pfa-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pfa-current-tasks .pfa-transfer-projects label:has(input:checked) {
+  border-color: var(--pfa-create-focus-accent);
+  background: color-mix(in srgb, var(--pfa-create-focus-accent) 16%, var(--pfa-task-surface));
+}
+
+.pfa-current-tasks .pfa-transfer-projects label:has(input:focus-visible) {
+  outline: 2px solid var(--pfa-focus);
+  outline-offset: 1px;
+}
+
+.pfa-current-tasks .pfa-transfer-projects:not(:disabled) label:hover {
+  background-color: var(--pfa-bg);
+}
+
+.pfa-current-tasks .pfa-create-fields .pfa-transfer-projects input {
+  inline-size: 16px;
+  block-size: 16px;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--pfa-ui-accent);
+  box-shadow: none;
+}
+
+@media (pointer: coarse) {
+  .pfa-current-tasks .pfa-create-fields .pfa-transfer-projects label { min-block-size: 44px; }
+}

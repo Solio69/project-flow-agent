@@ -2,6 +2,9 @@
 
 These rules apply to development tasks in this repository. Follow the current user request, `.specify/memory/constitution.md`, and any more specific project rules.
 
+Перед написанием или ревью кода прочитай [кодстайл проекта](docs/code-style.md).
+Он применяется к TypeScript, React, тестам и скриптам сборки.
+
 ## Language
 
 - Reply in the language the user used to address you, unless they explicitly request another language.
@@ -28,7 +31,8 @@ These rules apply to development tasks in this repository. Follow the current us
 - Stay within the agreed scope. Use the repository's actual stack, commands, and conventions. Discuss a concrete need before installing dependencies or changing external systems.
 - При реализации или изменении React-интерфейса используй [$senior-frontend](.agents/skills/senior-frontend/SKILL.md). Проверяй согласованные сценарии во вкладке Obsidian.
 - Record executed commands and outcomes in the task's `verification.md` as Passed, Failed, Blocked, or NotRun. Do not report an unperformed check as successful.
-- Перед передачей результата сверяй изменения с рабочей спецификацией. Для итогового ревью изменений кода используй [$code-reviewer](.agents/skills/code-reviewer/SKILL.md). Проверь также, что в diff только изменения по задаче и в нём нет секретов.
+- Перед передачей результата сверяй изменения с рабочей спецификацией и [кодстайлом](docs/code-style.md). Для итогового ревью изменений кода используй [$code-reviewer](.agents/skills/code-reviewer/SKILL.md). Проверь также, что в diff только изменения по задаче и в нём нет секретов.
+- Когда пользователь даёт правку по коду, обнови применимую проверку в [code-reviewer](.agents/skills/code-reviewer/SKILL.md) по его замечанию.
 
 ## Git и полномочия агента
 

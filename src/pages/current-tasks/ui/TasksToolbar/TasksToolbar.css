@@ -1,0 +1,70 @@
+.pfa-current-tasks .pfa-tasks-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 10px 16px;
+}
+
+.pfa-current-tasks .pfa-tasks-toolbar :is(.pfa-period, .pfa-control, .pfa-completed-toggle) {
+  display: inline-flex;
+  max-inline-size: 100%;
+  min-block-size: var(--pfa-circle-size);
+  padding: 6px 10px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--pfa-ui-accent) 50%, transparent);
+  border-radius: 10px;
+  background: var(--pfa-task-surface);
+  color: var(--pfa-ui-accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pfa-current-tasks .pfa-completed-toggle {
+  min-inline-size: 0;
+  cursor: pointer;
+}
+
+.pfa-current-tasks .pfa-switch-track {
+  position: relative;
+  flex: none;
+  inline-size: 30px;
+  block-size: 17px;
+  border: 1px solid var(--pfa-ui-accent);
+  border-radius: 10px;
+}
+
+.pfa-current-tasks .pfa-switch-track::after {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 11px;
+  block-size: 11px;
+  border-radius: 50%;
+  background: var(--pfa-ui-accent);
+  content: "";
+}
+
+.pfa-current-tasks .pfa-completed-toggle[data-show-completed="true"] .pfa-switch-track {
+  background: var(--pfa-ui-accent);
+}
+
+.pfa-current-tasks .pfa-completed-toggle[data-show-completed="true"] .pfa-switch-track::after {
+  inset-inline-start: 15px;
+  background: var(--pfa-task-surface);
+}
+
+@media (forced-colors: active) {
+  .pfa-current-tasks .pfa-switch-track {
+    display: none;
+  }
+}
+
+.pfa-current-tasks .pfa-period-label {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -1,0 +1,9 @@
+@import "./ui/CurrentTasks/CurrentTasks.css";
+@import "./ui/dialogs/TaskNameDialog/TaskNameDialog.css";
+@import "./ui/TasksToolbar/TasksToolbar.css";
+@import "./ui/TasksList/TasksList.css";
+@import "./ui/TaskPanel/TaskPanel.css";
+@import "./ui/Task/Task.css";
+@import "./ui/TaskActionsMenu/TaskActionsMenu.css";
+@import "./ui/dialogs/TaskTransferDialog/TaskTransferDialog.css";
+@import "./ui/dialogs/TaskArchiveDialog/TaskArchiveDialog.css";

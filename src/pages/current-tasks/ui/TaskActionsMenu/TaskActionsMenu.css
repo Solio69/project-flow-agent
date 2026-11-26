@@ -1,0 +1,93 @@
+.pfa-current-tasks .pfa-task-menu-anchor {
+  position: relative;
+  flex: none;
+}
+
+.pfa-current-tasks .pfa-task-menu-anchor > [aria-expanded="true"] {
+  background: var(--pfa-surface);
+}
+
+.pfa-current-tasks .pfa-task-menu {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: calc(100% + 5px);
+  inset-inline-end: 0;
+  display: flex;
+  flex-direction: column;
+  inline-size: min(272px, calc(100cqi - 12px));
+  padding: 4px;
+  border: 1px solid var(--pfa-border);
+  border-radius: 13px;
+  background: var(--pfa-task-surface);
+  box-shadow: 0 8px 24px var(--pfa-menu-shadow);
+}
+
+.pfa-current-tasks .pfa-task-menu[data-above="true"] {
+  inset-block: auto calc(100% + 5px);
+}
+
+.pfa-current-tasks .pfa-task-menu::before {
+  position: absolute;
+  inset-block-start: -5px;
+  inset-inline-end: calc(var(--pfa-circle-size) / 2 - 5px);
+  inline-size: 8px;
+  block-size: 8px;
+  border-block-start: 1px solid var(--pfa-border);
+  border-inline-start: 1px solid var(--pfa-border);
+  background: var(--pfa-task-surface);
+  transform: rotate(45deg);
+  pointer-events: none;
+  content: "";
+}
+
+.pfa-current-tasks .pfa-task-menu[data-above="true"]::before {
+  inset-block: auto -5px;
+  transform: rotate(225deg);
+}
+
+.pfa-current-tasks .pfa-task-menu-items {
+  min-block-size: 0;
+  overflow: auto;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control {
+  position: relative;
+  justify-content: flex-start;
+  align-items: flex-start;
+  inline-size: 100%;
+  block-size: auto;
+  padding: 8px;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: start;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control:focus-visible {
+  outline-offset: -2px;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control + .pfa-control::before {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 8px;
+  border-block-start: 1px solid var(--pfa-border);
+  pointer-events: none;
+  content: "";
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control .pfa-icon {
+  margin-block-start: 1px;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control small {
+  display: block;
+  margin-block-start: 2px;
+  color: var(--pfa-muted);
+  font-size: 12px;
+}
+
+.pfa-current-tasks .pfa-task-menu .pfa-control:not(:disabled):hover {
+  background: var(--pfa-surface);
+}

@@ -1,0 +1,18 @@
+.pfa-current-tasks .pfa-create-actions .pfa-archive-confirm {
+  --pfa-archive-ink: #96394b;
+  border-color: color-mix(in srgb, var(--pfa-archive-ink) 35%, transparent);
+  background: color-mix(in srgb, var(--pfa-archive-ink) 9%, var(--pfa-task-surface));
+  color: var(--pfa-archive-ink);
+  font-weight: 600;
+}
+
+.theme-dark .pfa-current-tasks .pfa-create-actions .pfa-archive-confirm {
+  --pfa-archive-ink: #f0afb8;
+}
+
+@media (hover: hover) {
+  .pfa-current-tasks .pfa-create-actions .pfa-archive-confirm:not(:disabled):hover {
+    border-color: var(--pfa-archive-ink);
+    background: color-mix(in srgb, var(--pfa-archive-ink) 15%, var(--pfa-task-surface));
+  }
+}
