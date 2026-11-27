@@ -37,10 +37,11 @@ export function isEditableList({
   format,
   period,
   hasDuplicatePeriodFields,
+  isPeriodEmpty,
 }: CurrentTasksDocument) {
   return (
     format === TASKS_FORMAT.properties &&
-    period !== undefined &&
+    (period !== undefined || isPeriodEmpty) &&
     !hasDuplicatePeriodFields
   );
 }

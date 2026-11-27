@@ -1,4 +1,5 @@
 export const DOM_EVENT = {
+  pointerDown: "pointerdown",
   pointerMove: "pointermove",
   pointerUp: "pointerup",
   pointerCancel: "pointercancel",

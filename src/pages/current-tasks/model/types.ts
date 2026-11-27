@@ -29,6 +29,8 @@ export interface CurrentTasksDocument<Group extends CurrentTaskGroup = CurrentTa
   format: TasksFormat;
   period?: TaskPeriod;
   hasDuplicatePeriodFields: boolean;
+  isPeriodEmpty: boolean;
+  isPeriodEditable: boolean;
   groups: Group[];
   diagnostics: ActionDiagnostic[];
 }

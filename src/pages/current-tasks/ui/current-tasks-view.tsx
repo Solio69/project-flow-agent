@@ -6,6 +6,7 @@ import { ERROR_COPY } from "./current-tasks-view.constants";
 import { CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW } from "../model/current-tasks.constants";
 import {
   archiveCurrentTask,
+  changeTaskPeriod,
   createCurrentTask,
   moveCurrentTask,
   openCurrentTasksSource,
@@ -22,6 +23,7 @@ import type { SetCompleted } from "../model/task-completion";
 import { PartialTaskCreation, TASK_CREATE_COPY, type CreateTask, type CreateTaskResult } from "../model/task-create";
 import { isEditableList, TaskEditError } from "../model/task-edit";
 import type { MoveTask } from "../model/task-move";
+import { PERIOD_WRITE_COPY, type ChangePeriod, type PeriodChangeResult } from "../model/task-period";
 import { RenameTaskSourceChanged, TASK_RENAME_COPY, type RenameTask, type RenameTaskResult } from "../model/task-rename";
 import { PartialTaskTransfer, TASK_TRANSFER_COPY, type TransferTask, type TransferTaskResult } from "../model/task-transfer";
 import type { ReorderTask } from "../model/task-reorder";
@@ -30,15 +32,17 @@ import { CURRENT_TASKS_STATE } from "../model/view-state.constants";
 
 const { loading, error: errorState, ready } = CURRENT_TASKS_STATE;
 const {
-  sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog,
+  sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog, periodLog,
   completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog, renameLog, transferLog, archiveLog,
 } = ERROR_COPY;
 const { failed: createFailed, busy } = TASK_CREATE_COPY;
 const { failed: renameFailed } = TASK_RENAME_COPY;
 const { failed: transferFailed } = TASK_TRANSFER_COPY;
 const { failed: archiveFailed } = TASK_ARCHIVE_COPY;
+const { failed: periodFailed, staleDraft } = PERIOD_WRITE_COPY;
 
 type TaskEditHandlers = {
+  onChangePeriod?: ChangePeriod;
   onSetCompleted?: SetCompleted;
   onMoveTask?: MoveTask;
   onReorderTask?: ReorderTask;
@@ -148,9 +152,29 @@ export class CurrentTasksView extends ItemView {
   private taskEditHandlers(state: CurrentTasksState): TaskEditHandlers {
     if (this.isEditInFlight || !isKindReady(state)) return {};
     const { document } = state;
-    if (!isEditableList(document)) return {};
+    const { isPeriodEditable, sourcePath, sourceMarkdown } = document;
+    const onChangePeriod: ChangePeriod | undefined = isPeriodEditable ? async (period, expectedSource) => {
+      if (expectedSource) {
+        const { sourcePath: expectedPath, sourceMarkdown: expectedMarkdown } = expectedSource;
+        if (expectedPath !== sourcePath || expectedMarkdown !== sourceMarkdown)
+          return { ok: false, message: staleDraft };
+      }
+      const result = await this.withTaskEdit<PeriodChangeResult>(state, async () => {
+        try {
+          await changeTaskPeriod(this.app, document, period);
+          return { ok: true };
+        } catch (error) {
+          if (error instanceof TaskEditError) return { ok: false, message: error.message };
+          console.error(periodLog, error);
+          return { ok: false, message: periodFailed };
+        }
+      });
+      return result ?? { ok: false, message: busy };
+    } : undefined;
+    if (!isEditableList(document)) return { onChangePeriod };
 
     return {
+      onChangePeriod,
       onSetCompleted: (task, completed) => this.runTaskEdit(
         state, () => setTaskCompletion(this.app, document, task, completed), completionLog, completionFailed,
       ),
