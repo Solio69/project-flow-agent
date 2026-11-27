@@ -1,5 +1,6 @@
 import { ItemView, Notice, type WorkspaceLeaf } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
+import { SPACE } from "../../../shared/lib";
 import { CurrentTasks } from "./CurrentTasks";
 import type { CompletedVisibility } from "../model/completed-visibility";
 import { ERROR_COPY } from "./current-tasks-view.constants";
@@ -7,7 +8,9 @@ import { CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW } from "../model/current-tasks.
 import {
   archiveCurrentTask,
   changeTaskPeriod,
+  copyTaskPath,
   createCurrentTask,
+  duplicateCurrentTask,
   moveCurrentTask,
   openCurrentTasksSource,
   openLinkedNote,
@@ -20,9 +23,11 @@ import {
 } from "../api";
 import { PartialTaskArchive, TASK_ARCHIVE_COPY, type ArchiveTask, type ArchiveTaskResult } from "../model/task-archive";
 import type { SetCompleted } from "../model/task-completion";
-import { PartialTaskCreation, TASK_CREATE_COPY, type CreateTask, type CreateTaskResult } from "../model/task-create";
+import { PartialTaskCreation, TASK_CREATE_COPY, type CreateTask, type CreatedTaskReceipt, type CreateTaskResult } from "../model/task-create";
+import { DUPLICATE_TASK_COPY, type DuplicateTask } from "../model/task-duplicate";
 import { isEditableList, TaskEditError } from "../model/task-edit";
 import type { MoveTask } from "../model/task-move";
+import { NOTE_PATH_COPY, type CopyTaskPath } from "../model/task-note-path";
 import { PERIOD_WRITE_COPY, type ChangePeriod, type PeriodChangeResult } from "../model/task-period";
 import { RenameTaskSourceChanged, TASK_RENAME_COPY, type RenameTask, type RenameTaskResult } from "../model/task-rename";
 import { PartialTaskTransfer, TASK_TRANSFER_COPY, type TransferTask, type TransferTaskResult } from "../model/task-transfer";
@@ -32,7 +37,7 @@ import { CURRENT_TASKS_STATE } from "../model/view-state.constants";
 
 const { loading, error: errorState, ready } = CURRENT_TASKS_STATE;
 const {
-  sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog, periodLog,
+  sourceMissing, sourceUnreadable, noteOpenFailed, readLog, openLog, periodLog, copyPathLog, duplicateLog,
   completionLog, completionFailed, moveLog, moveFailed, reorderLog, reorderFailed, createLog, renameLog, transferLog, archiveLog,
 } = ERROR_COPY;
 const { failed: createFailed, busy } = TASK_CREATE_COPY;
@@ -40,6 +45,8 @@ const { failed: renameFailed } = TASK_RENAME_COPY;
 const { failed: transferFailed } = TASK_TRANSFER_COPY;
 const { failed: archiveFailed } = TASK_ARCHIVE_COPY;
 const { failed: periodFailed, staleDraft } = PERIOD_WRITE_COPY;
+const { success: copiedPath, failed: copyPathFailed } = NOTE_PATH_COPY;
+const { success: duplicated, retry: retryDuplicate, failed: duplicateFailed } = DUPLICATE_TASK_COPY;
 
 type TaskEditHandlers = {
   onChangePeriod?: ChangePeriod;
@@ -50,6 +57,7 @@ type TaskEditHandlers = {
   onRenameTask?: RenameTask;
   onTransferTask?: TransferTask;
   onArchiveTask?: ArchiveTask;
+  onDuplicateTask?: DuplicateTask;
 };
 
 export class CurrentTasksView extends ItemView {
@@ -60,6 +68,7 @@ export class CurrentTasksView extends ItemView {
   private relatedPaths = new Set<string>();
   private revision = 0;
   private isEditInFlight = false;
+  private readonly pendingDuplicates = new Map<string, CreatedTaskReceipt>();
 
   constructor(leaf: WorkspaceLeaf, private readonly completedVisibility: CompletedVisibility) {
     super(leaf);
@@ -127,6 +136,21 @@ export class CurrentTasksView extends ItemView {
       const { sourcePath } = state.document;
       await this.openNote(() => openCurrentTasksSource(this.app, sourcePath));
     };
+    const onCopyTaskPath: CopyTaskPath = async (task, clipboard) => {
+      if (!isKindReady(state)) return;
+      const { document: { sourcePath } } = state;
+      try {
+        await copyTaskPath(this.app, sourcePath, task, clipboard);
+        new Notice(copiedPath);
+      } catch (error) {
+        if (error instanceof TaskEditError) {
+          new Notice(error.message);
+        } else {
+          console.error(copyPathLog, error);
+          new Notice(copyPathFailed);
+        }
+      }
+    };
 
     this.root?.render(
       <CurrentTasks
@@ -135,6 +159,7 @@ export class CurrentTasksView extends ItemView {
         completedVisibility={this.completedVisibility}
         onOpenNote={onOpenNote}
         onOpenSource={onOpenSource}
+        onCopyTaskPath={onCopyTaskPath}
         {...this.taskEditHandlers(state)}
       />,
     );
@@ -184,6 +209,26 @@ export class CurrentTasksView extends ItemView {
       onReorderTask: (task, destinationLine) => this.runTaskEdit(
         state, () => reorderCurrentTask(this.app, document, task, destinationLine), reorderLog, reorderFailed,
       ),
+      onDuplicateTask: (task) => this.withTaskEdit(state, async () => {
+        const { id } = task;
+        const pending = this.pendingDuplicates.get(id);
+        try {
+          const path = await duplicateCurrentTask(this.app, document, task, pending);
+          this.pendingDuplicates.delete(id);
+          new Notice(duplicated);
+          return path;
+        } catch (error) {
+          if (error instanceof PartialTaskCreation) {
+            this.pendingDuplicates.set(id, error.receipt);
+            new Notice(`${error.message}${SPACE}${retryDuplicate}`);
+          } else if (error instanceof TaskEditError) {
+            new Notice(error.message);
+          } else {
+            console.error(duplicateLog, error);
+            new Notice(duplicateFailed);
+          }
+        }
+      }),
       onCreateTask: async (request) => {
         const result = await this.withTaskEdit<CreateTaskResult>(state, async () => {
           try {

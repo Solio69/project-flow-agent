@@ -3,6 +3,7 @@ import { ALERT_ROLE, OMIT_FROM_TAB_ORDER } from "../../../../shared/lib/dom";
 import { CreateTaskDialog, type CreateTaskProject, type RequestCreateTask } from "../dialogs/CreateTaskDialog";
 import { TasksList } from "../TasksList";
 import { NoteLink, type OpenNote } from "../NoteLink";
+import type { TaskFromButton } from "../Task";
 import { RenameTaskDialog, type RenameSelection, type RequestRenameTask } from "../dialogs/RenameTaskDialog";
 import { TaskArchiveDialog, type RequestArchiveTask } from "../dialogs/TaskArchiveDialog";
 import { TaskTransferDialog, type RequestTransferTask } from "../dialogs/TaskTransferDialog";
@@ -10,8 +11,10 @@ import type { CompletedVisibility } from "../../model/completed-visibility";
 import type { ArchiveReceipt, ArchiveSelection, ArchiveTask } from "../../model/task-archive";
 import type { SetCompleted } from "../../model/task-completion";
 import type { CreateTask } from "../../model/task-create";
+import type { DuplicateTask } from "../../model/task-duplicate";
+import type { CopyTaskPath } from "../../model/task-note-path";
 import { canRestoreTaskFocus, focusTaskControl, focusTaskElement } from "../task-focus";
-import { PANEL_TITLE_SELECTOR, TASK_PANEL_SELECTOR, TASK_ROW_PATH_SELECTOR } from "../task-focus.constants";
+import { PANEL_TITLE_SELECTOR, TASK_MENU_TRIGGER_SELECTOR, TASK_PANEL_SELECTOR, TASK_ROW_PATH_SELECTOR } from "../task-focus.constants";
 import type { ReorderTask } from "../../model/task-reorder";
 import type { MoveTask } from "../../model/task-move";
 import type { ChangePeriod } from "../../model/task-period";
@@ -31,10 +34,11 @@ function focusPanelTitle(panel: Element | null) {
   return focusTaskElement(panel?.querySelector<HTMLHeadingElement>(PANEL_TITLE_SELECTOR));
 }
 
-function focusCreatedTask(control: HTMLButtonElement, path: string): boolean {
+function focusCreatedTask(control: HTMLButtonElement, path: string, selector?: string): boolean {
   const panel = control.closest(TASK_PANEL_SELECTOR);
   const rows = panel?.querySelectorAll<HTMLLIElement>(TASK_ROW_PATH_SELECTOR);
   const row = Array.from(rows ?? []).find(({ dataset: { taskPath } }) => taskPath === path);
+  if (selector && focusTaskControl(row?.querySelector<HTMLButtonElement>(selector))) return true;
   if (focusTaskElement(row)) return true;
 
   return focusPanelTitle(panel);
@@ -43,6 +47,7 @@ function focusCreatedTask(control: HTMLButtonElement, path: string): boolean {
 export function CurrentTasks({
   title, state, completedVisibility: { get, set, subscribe }, onChangePeriod,
   onOpenNote, onOpenSource, onSetCompleted, onMoveTask, onReorderTask, onCreateTask, onRenameTask, onTransferTask, onArchiveTask,
+  onCopyTaskPath, onDuplicateTask,
 }: {
   title: string;
   state: CurrentTasksState;
@@ -57,10 +62,13 @@ export function CurrentTasks({
   onRenameTask?: RenameTask;
   onTransferTask?: TransferTask;
   onArchiveTask?: ArchiveTask;
+  onCopyTaskPath?: CopyTaskPath;
+  onDuplicateTask?: DuplicateTask;
 }) {
   const isCompletedVisible = useSyncExternalStore(subscribe, get, get);
   const [createProject, setCreateProject] = useState<CreateTaskProject>();
   const createFocus = useRef<CreateFocus | null>(null);
+  const [duplicateFocus, setDuplicateFocus] = useState<CreateFocus>();
   const [renameSelection, setRenameSelection] = useState<RenameSelection>();
   const [archiveSelection, setArchiveSelection] = useState<ArchiveSelection>();
   const taskActionFocus = useRef<TaskActionFocus | null>(null);
@@ -98,6 +106,19 @@ export function CurrentTasks({
       setArchiveSelection(selection);
     }
     : undefined;
+  const requestDuplicateTask: TaskFromButton | undefined = onDuplicateTask
+    ? async (task, control) => {
+      const taskPath = await onDuplicateTask(task);
+      if (taskPath) setDuplicateFocus({ control, taskPath });
+    }
+    : undefined;
+
+  useLayoutEffect(() => {
+    if (!duplicateFocus || !onDuplicateTask) return;
+    const { control, taskPath } = duplicateFocus;
+    setDuplicateFocus(undefined);
+    if (taskPath && canRestoreTaskFocus(control)) focusCreatedTask(control, taskPath, TASK_MENU_TRIGGER_SELECTOR);
+  }, [duplicateFocus, onDuplicateTask]);
 
   useLayoutEffect(() => {
     const { current: pending } = createFocus;
@@ -172,6 +193,8 @@ export function CurrentTasks({
           onRequestRenameTask={requestRenameTask}
           onRequestTransferTask={requestTransferTask}
           onRequestArchiveTask={requestArchiveTask}
+          onRequestDuplicateTask={requestDuplicateTask}
+          onCopyTaskPath={onCopyTaskPath}
           lastTransfer={lastTransfer}
         />
       );

@@ -4,22 +4,25 @@ import { BUTTON_TYPE, DIALOG_POPUP, GROUP_ROLE, KEYBOARD_KEY } from "../../../..
 import { Icon } from "../../../../shared/ui";
 import { focusTaskControl } from "../task-focus";
 import { TASK_ARCHIVE_COPY, TASK_ARCHIVE_ICON } from "../../model/task-archive";
+import { DUPLICATE_TASK_COPY, DUPLICATE_TASK_ICON } from "../../model/task-duplicate";
 import { TASK_RENAME_COPY, TASK_RENAME_ICON } from "../../model/task-rename";
 import { TASK_TRANSFER_COPY, TASK_TRANSFER_ICON } from "../../model/task-transfer";
 import { ACTIONS_ICON, REMOVE_TASK_ACTION, VIEW_CONTENT_SELECTOR } from "./constants";
 
 const { escape } = KEYBOARD_KEY;
 const { action: rename } = TASK_RENAME_COPY;
+const { action: duplicate } = DUPLICATE_TASK_COPY;
 const { action: transfer } = TASK_TRANSFER_COPY;
 const { action: archive, hint: archiveHint } = TASK_ARCHIVE_COPY;
 
 type OpenTaskAction = (control: HTMLButtonElement) => void;
-type DialogAction = { label: string; icon: IconName; open?: OpenTaskAction; hint?: string };
+type MenuAction = { label: string; icon: IconName; open?: OpenTaskAction; hint?: string; isDialogAction?: boolean };
 type MenuPlacement = { isAbove: boolean; maxHeight: number };
 
-export function TaskActionsMenu({ label, onRename, onTransfer, onArchive }: {
+export function TaskActionsMenu({ label, onRename, onDuplicate, onTransfer, onArchive }: {
   label: string;
   onRename?: OpenTaskAction;
+  onDuplicate?: OpenTaskAction;
   onTransfer?: OpenTaskAction;
   onArchive?: OpenTaskAction;
 }) {
@@ -29,11 +32,12 @@ export function TaskActionsMenu({ label, onRename, onTransfer, onArchive }: {
   const popup = useRef<HTMLDivElement>(null);
   const firstAction = useRef<HTMLButtonElement>(null);
   const menuId = useId();
-  const actions: DialogAction[] = [
-    { label: rename, icon: TASK_RENAME_ICON, open: onRename },
-    { label: transfer, icon: TASK_TRANSFER_ICON, open: onTransfer },
+  const actions: MenuAction[] = [
+    { label: rename, icon: TASK_RENAME_ICON, open: onRename, isDialogAction: true },
+    { label: duplicate, icon: DUPLICATE_TASK_ICON, open: onDuplicate },
+    { label: transfer, icon: TASK_TRANSFER_ICON, open: onTransfer, isDialogAction: true },
     REMOVE_TASK_ACTION,
-    { label: archive, icon: TASK_ARCHIVE_ICON, open: onArchive, hint: archiveHint },
+    { label: archive, icon: TASK_ARCHIVE_ICON, open: onArchive, hint: archiveHint, isDialogAction: true },
   ];
   const firstAvailable = actions.find(({ open: action }) => action);
   const isActionAvailable = Boolean(firstAvailable);
@@ -90,9 +94,9 @@ export function TaskActionsMenu({ label, onRename, onTransfer, onArchive }: {
     action(button);
   }
 
-  function renderDialogAction(item: DialogAction) {
-    const { label, icon, open: action, hint } = item;
-    const popupType = action ? DIALOG_POPUP : undefined;
+  function renderMenuAction(item: MenuAction) {
+    const { label, icon, open: action, hint, isDialogAction } = item;
+    const popupType = action && isDialogAction ? DIALOG_POPUP : undefined;
     return (
       <button
         key={label}
@@ -133,7 +137,7 @@ export function TaskActionsMenu({ label, onRename, onTransfer, onArchive }: {
           role={GROUP_ROLE}
           aria-label={label}
         >
-          <div className="pfa-task-menu-items">{actions.map(renderDialogAction)}</div>
+          <div className="pfa-task-menu-items">{actions.map(renderMenuAction)}</div>
         </div>
       )}
     </div>

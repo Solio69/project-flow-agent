@@ -9,7 +9,7 @@ function configuredEmoji(value: unknown): string | undefined {
 }
 
 export async function readProjectEmojis({ configDir, adapter }: Vault) {
-  const path = configDir + VAULT_PATH_SEPARATOR + ICONIZE_DATA_PATH;
+  const path = `${configDir}${VAULT_PATH_SEPARATOR}${ICONIZE_DATA_PATH}`;
   try {
     const data: unknown = JSON.parse(await adapter.read(path));
     return isRecord(data) ? data : undefined;

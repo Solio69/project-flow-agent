@@ -12,7 +12,7 @@ export const COPY = {
 export const ICONS = { chevron: "chevron-right", archive: "trash-2" } as const;
 export const MIN_TASKS_FOR_GRIP = 2;
 export const ENABLED_TASK_CONTROL = "input:enabled";
-export const QUOTED_TITLE_PREFIX = SPACE + "«";
+export const QUOTED_TITLE_PREFIX = `${SPACE}«`;
 export const QUOTED_TITLE_SUFFIX = "»";
 
 export const TASK_REORDER = {

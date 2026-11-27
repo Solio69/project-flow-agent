@@ -5,13 +5,23 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { build } from "esbuild";
 import { renderToStaticMarkup } from "react-dom/server";
-import { legacyTasks } from "./current-tasks-markdown.mjs";
+import { externalListEdit, legacyTasks } from "./current-tasks-markdown.mjs";
 import {
   archiveTaskCase, blogTaskMarkdown, completionReviewNotes, createTaskCase, currentTasksExpected, differentTaskNoteMarkdown,
-  iconizeFixture, projectLinkCase, renameTaskCase, sourceNotePaths, taskNoteMarkdown, transferTaskCase,
+  iconizeFixture, notePathCopy, projectLinkCase, renameTaskCase, sourceNotePaths, taskNoteMarkdown, transferTaskCase,
 } from "./scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
+
+export function createClipboardFixture() {
+  const copied = [];
+  const clipboard = { async writeText(value) { copied.push(value); } };
+  return { clipboard, copied };
+}
+
+export function appendExternalListEdit(controls) {
+  controls.markdown = `${controls.markdown}${externalListEdit}`;
+}
 const project = fileURLToPath(new URL("../../", import.meta.url));
 const { viewTitle } = currentTasksExpected;
 const { note: { title: projectTitle, link: projectLink, notePath: projectNotePath } } = projectLinkCase;
@@ -45,6 +55,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
   const source = taskFile(sourceNotePaths.legacy);
   const renamedSource = taskFile(sourceNotePaths.renamed);
   const note = taskFile(renameTaskCase.oldPath);
+  const taskAttachment = taskFile(notePathCopy.attachment);
   const secondNote = taskFile(second.path);
   const replacementNote = taskFile(replacement.path);
   const blogTaskNote = taskFile(blogTask.path);
@@ -66,6 +77,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
     shortLinkDestination: note,
     projectLinkDestination: projectNote,
     beforeReadSource: undefined,
+    beforeCheckPath: undefined,
     beforeProcess: undefined,
     unindexedPaths: [],
     archiveAvailable: true,
@@ -81,7 +93,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
     [blogTaskNote, () => blogTaskMarkdown],
   ]);
   const relatedNotes = new Map([
-    projectNote, blogNote, ...noteReaders.keys(),
+    projectNote, blogNote, taskAttachment, ...noteReaders.keys(),
   ].map((file) => [file.path, file]));
   const readTaskNote = (file) => noteReaders.get(file)?.();
   let activeLeaf;
@@ -123,6 +135,12 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
   class Notice {
     constructor(message) {
       notices.push(message);
+    }
+  }
+
+  class FileSystemAdapter {
+    getFullPath(path) {
+      return `${notePathCopy.root}\\${path.replaceAll("/", "\\")}`;
     }
   }
 
@@ -176,8 +194,9 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
 
   const vault = {
     configDir: ".obsidian",
-    adapter: {
+    adapter: Object.assign(new FileSystemAdapter(), {
       async exists(path) {
+        await controls.beforeCheckPath?.(path);
         const comparable = path.toLowerCase();
         return controls.unindexedPaths.some((entry) => entry.toLowerCase() === comparable);
       },
@@ -186,7 +205,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
         if (!controls.iconize) throw new Error("Iconize data unavailable");
         return JSON.stringify(controls.iconize);
       },
-    },
+    }),
     getFolderByPath(path) {
       if (path === archive.path) return controls.archiveAvailable ? archive : null;
       return path === inbox.path ? inbox : path === blogInbox.path ? blogInbox : null;
@@ -253,6 +272,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
     require(name) {
       if (name === "obsidian") {
         return {
+          FileSystemAdapter,
           Plugin, ItemView, Notice,
           parseLinktext(link) {
             const fragmentStart = link.indexOf("#");
@@ -294,7 +314,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
       if (link === blogTask.link) return blogTaskNote;
       if (link === "Черновик") return controls.shortLinkDestination;
       if (createdNotes.has(link)) return createdNotes.get(link).file;
-      return relatedNotes.get(link) ?? relatedNotes.get(link + ".md") ?? null;
+      return relatedNotes.get(link) ?? relatedNotes.get(`${link}.md`) ?? null;
     },
   };
   const fileManager = {
@@ -312,7 +332,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
       if (controls.updateLinksAfterRename) {
         controls.markdown = controls.markdown
           .replaceAll(renameTaskCase.oldLink, path.slice(0, -3))
-          .replaceAll("[[Черновик]]", "[[" + path.slice(0, -3) + "]]");
+          .replaceAll("[[Черновик]]", `[[${path.slice(0, -3)}]]`);
         emit("modify", source);
       }
     },
@@ -323,6 +343,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
 
   return {
     controls,
+    taskAttachment,
     views,
     leaves,
     mounts,

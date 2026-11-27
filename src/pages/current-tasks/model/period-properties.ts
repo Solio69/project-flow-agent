@@ -21,20 +21,20 @@ function isFrontmatterDelimiter(line: string) {
 function periodProperty(key: string, gap: string, raw: string, line: number): PeriodProperty {
   const isCommentOnly = raw.startsWith(COMMENT_MARK);
   const comment = isCommentOnly
-    ? gap + raw
+    ? `${gap}${raw}`
     : raw.match(INLINE_COMMENT_PATTERN)?.[0] ?? EMPTY_STRING;
   const scalar = isCommentOnly ? EMPTY_STRING : raw.slice(0, raw.length - comment.length);
   const value = scalar.trim();
   const [, quote = EMPTY_STRING, quotedValue] = QUOTED_VALUE_PATTERN.exec(value) ?? [];
   const trailing = scalar.slice(scalar.trimEnd().length);
-  const prefix = key + LABEL_COLON;
+  const prefix = `${key}${LABEL_COLON}`;
   const text = quotedValue ?? value;
 
   return {
     line, text, isScalar: !text || DATE_SHAPED_VALUE.test(text),
     withValue: (next) => next === undefined
-      ? prefix + comment
-      : prefix + (gap || SPACE) + quote + next + quote + trailing + comment,
+      ? `${prefix}${comment}`
+      : `${prefix}${gap || SPACE}${quote}${next}${quote}${trailing}${comment}`,
   };
 }
 

@@ -27,7 +27,7 @@ type FileMovePlan = {
 
 export function taskFilePathIn(folderPath: string, notePath: string) {
   const name = notePath.slice(notePath.lastIndexOf(VAULT_PATH_SEPARATOR) + VAULT_PATH_SEPARATOR.length);
-  return folderPath + VAULT_PATH_SEPARATOR + name;
+  return `${folderPath}${VAULT_PATH_SEPARATOR}${name}`;
 }
 
 function isLinkToFile(link: string, path: string) {

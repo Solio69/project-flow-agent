@@ -6,7 +6,7 @@ import type { RequestRenameTask } from "../dialogs/RenameTaskDialog";
 import type { TaskFromButton } from "../Task";
 import { TaskPanel } from "../TaskPanel";
 import { TasksToolbar } from "../TasksToolbar";
-import { LIST_KEY_SEPARATOR } from "../../model/current-tasks.constants";
+import { LIST_KEY_SEPARATOR, TASK_GROUP_KIND } from "../../model/current-tasks.constants";
 import type { LinkedTaskGroup, TasksSnapshot } from "../../model/linked-tasks";
 import type { SetCompleted } from "../../model/task-completion";
 import {
@@ -17,9 +17,11 @@ import {
 import {
   PANEL_DISCLOSURE_SELECTOR,
   TASK_PANEL_SELECTOR,
+  TASK_ROW_PATH_SELECTOR,
 } from "../task-focus.constants";
 import { isTodayGroup } from "../../model/task-group";
 import type { MoveTask } from "../../model/task-move";
+import type { CopyTaskPath } from "../../model/task-note-path";
 import type { ChangePeriod } from "../../model/task-period";
 import type { ReorderTask } from "../../model/task-reorder";
 import type { TransferReceipt } from "../../model/task-transfer";
@@ -30,13 +32,33 @@ import {
   COPY,
   DIAGNOSTIC_LABEL_SUFFIX,
   EMPTY_TODAY,
+  MOVE_FOCUS_OPTIONS,
   TASK_MOVE_CONTROL_SELECTOR,
 } from "./constants";
 
 const { diagnosticsTitle, lineLabel } = COPY;
 
 type Panel = { group: LinkedTaskGroup; isToday: boolean };
-type MoveFocus = { control: HTMLButtonElement; notePath: string };
+type MoveOrigin = { panel: HTMLElement; nearbyRows: (Element | null | undefined)[] };
+type MoveFocus = { control: HTMLButtonElement; notePath: string; origin?: MoveOrigin };
+
+function projectMoveOrigin(control: HTMLButtonElement): MoveOrigin | undefined {
+  const panel = control.closest<HTMLElement>(TASK_PANEL_SELECTOR);
+  if (panel?.dataset.section !== TASK_GROUP_KIND.project) return;
+  const row = control.closest(TASK_ROW_PATH_SELECTOR);
+  const nearbyRows = [row?.nextElementSibling, row?.previousElementSibling];
+  return { panel, nearbyRows };
+}
+
+function focusMoveOrigin(control: HTMLButtonElement, { panel, nearbyRows }: MoveOrigin) {
+  if (focusTaskControl(control, MOVE_FOCUS_OPTIONS)) return;
+  for (const row of nearbyRows) {
+    const arrow = row?.querySelector<HTMLButtonElement>(TASK_MOVE_CONTROL_SELECTOR);
+    if (focusTaskControl(arrow, MOVE_FOCUS_OPTIONS)) return;
+  }
+  const disclosure = panel.querySelector<HTMLButtonElement>(PANEL_DISCLOSURE_SELECTOR);
+  focusTaskControl(disclosure, MOVE_FOCUS_OPTIONS);
+}
 
 function renderDiagnostic({ line, message }: ActionDiagnostic) {
   const label = line && `${lineLabel}${SPACE}${line}${DIAGNOSTIC_LABEL_SUFFIX}`;
@@ -62,6 +84,8 @@ export function TasksList({
   onRequestRenameTask,
   onRequestTransferTask,
   onRequestArchiveTask,
+  onRequestDuplicateTask,
+  onCopyTaskPath,
   lastTransfer,
 }: {
   document: TasksSnapshot;
@@ -76,6 +100,8 @@ export function TasksList({
   onRequestRenameTask?: RequestRenameTask;
   onRequestTransferTask?: RequestTransferTask;
   onRequestArchiveTask?: RequestArchiveTask;
+  onRequestDuplicateTask?: TaskFromButton;
+  onCopyTaskPath?: CopyTaskPath;
   lastTransfer?: TransferReceipt;
 }) {
   const { period, isPeriodEditable, groups, diagnostics } = document;
@@ -99,7 +125,7 @@ export function TasksList({
     ? (task, control) => {
         if (hasTaskControlFocus(control)) {
           const { notePath } = task;
-          moveFocus.current = { control, notePath };
+          moveFocus.current = { control, notePath, origin: projectMoveOrigin(control) };
         }
         void onMoveTask(task);
       }
@@ -110,8 +136,13 @@ export function TasksList({
     if (!pending || !onMoveTask) return;
     moveFocus.current = null;
 
-    const { control, notePath } = pending;
-    if (!canRestoreTaskFocus(control) || focusTaskControl(control)) return;
+    const { control, notePath, origin } = pending;
+    if (!canRestoreTaskFocus(control)) return;
+    if (origin) {
+      focusMoveOrigin(control, origin);
+      return;
+    }
+    if (focusTaskControl(control)) return;
 
     const moveControls = panelsRef.current?.querySelectorAll<HTMLButtonElement>(
       TASK_MOVE_CONTROL_SELECTOR,
@@ -167,6 +198,8 @@ export function TasksList({
           onRequestRenameTask={onRequestRenameTask}
           onRequestTransferTask={onRequestTransferTask}
           onRequestArchiveTask={onRequestArchiveTask}
+          onRequestDuplicateTask={onRequestDuplicateTask}
+          onCopyTaskPath={onCopyTaskPath}
           projectGroups={groups}
           lastTransfer={lastTransfer}
         />

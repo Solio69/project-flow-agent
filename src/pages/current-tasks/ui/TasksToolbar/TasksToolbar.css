@@ -24,6 +24,7 @@
 
 .pfa-current-tasks .pfa-completed-toggle {
   min-inline-size: 0;
+  box-shadow: none;
   cursor: pointer;
 }
 

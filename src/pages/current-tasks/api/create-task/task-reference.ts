@@ -4,7 +4,7 @@ import { MARKDOWN_EXTENSION_PATTERN } from "../../../../shared/lib/note-path";
 import { resolveLink } from "../../../../shared/api/obsidian";
 import { TASK_CREATE_COPY, type CreatedTaskReceipt } from "../../model/task-create";
 import { TASK_EDIT_COPY, TaskEditError } from "../../model/task-edit";
-import { readTaskId } from "../task-note-id";
+import { verifyTaskNote } from "../task-note-id";
 import type { LinkedTask } from "../../model/linked-tasks";
 import type { CreationTarget } from "./creation-target";
 
@@ -40,16 +40,11 @@ export async function saveTaskReference(
   { path, id }: CreatedTaskReceipt,
   { sourceMarkdown, nextMarkdown, hasDuplicateReference }: TaskReferenceEdit,
 ) {
-  const task = vault.getFileByPath(path);
-  if (!task) throw new TaskEditError(retryChanged);
-  const { stat: { mtime, size } } = task;
-  if (await readTaskId(vault, task) !== id) throw new TaskEditError(retryChanged);
+  const { assertUnchanged } = await verifyTaskNote(vault, path, id, retryChanged);
 
   const saved = await vault.process(source, (current) => {
     assertCurrent();
-    const { stat: { mtime: actualMtime, size: actualSize } } = task;
-    if (vault.getFileByPath(path) !== task || mtime !== actualMtime || size !== actualSize)
-      throw new TaskEditError(retryChanged);
+    assertUnchanged();
     if (current === nextMarkdown) return current;
     if (current !== sourceMarkdown) throw new TaskEditError(conflict);
     if (hasDuplicateReference()) throw new TaskEditError(duplicateTask);

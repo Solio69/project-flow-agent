@@ -33,10 +33,10 @@ const completionRow = (mark) => `-\t[${mark}]  ${draftWikiLink}  `;
 const afterCompletion = "\n\n# Другая часть\n- [ ] Другая запись\n";
 
 export const completionCases = [
-  { unchecked: completionHeader + todayHeading + "\r\n" + completionRow(" ") + "\r\n" + projectHeading + afterCompletion,
-    checked: completionHeader + todayHeading + "\r\n" + completionRow("x") + "\r\n" + projectHeading + afterCompletion },
-  { unchecked: completionHeader + projectHeading + "\r\n" + completionRow(" ") + afterCompletion,
-    checked: completionHeader + projectHeading + "\r\n" + completionRow("x") + afterCompletion },
+  { unchecked: `${completionHeader}${todayHeading}\r\n${completionRow(" ")}\r\n${projectHeading}${afterCompletion}`,
+    checked: `${completionHeader}${todayHeading}\r\n${completionRow("x")}\r\n${projectHeading}${afterCompletion}` },
+  { unchecked: `${completionHeader}${projectHeading}\r\n${completionRow(" ")}${afterCompletion}`,
+    checked: `${completionHeader}${projectHeading}\r\n${completionRow("x")}${afterCompletion}` },
 ];
 
 const periodBody = completionCases[0].unchecked.slice(completionHeader.length);
@@ -44,14 +44,14 @@ const periodHeader = (start, end) =>
   `\uFEFF---\r\nperiod_start: ${start}# начало\r\nperiod_end:${end}\r\nnote: 'Текст [ ]'\r\n---\r\n`;
 
 export const periodChange = {
-  initial: periodHeader("'2026-11-23' ", " 2026-11-29") + periodBody,
+  initial: `${periodHeader("'2026-11-23' ", " 2026-11-29")}${periodBody}`,
   next: { start: "2026-11-30", end: "2026-12-01" },
-  saved: periodHeader("'2026-11-30' ", " 2026-12-01") + periodBody,
+  saved: `${periodHeader("'2026-11-30' ", " 2026-12-01")}${periodBody}`,
   crossYear: { start: "2026-11-01", end: "2027-01-31" },
-  crossYearSaved: periodHeader("'2026-11-01' ", " 2027-01-31") + periodBody,
+  crossYearSaved: `${periodHeader("'2026-11-01' ", " 2027-01-31")}${periodBody}`,
   crossYearLabel: /01\.11\.2026 — 31\.01\.2027/,
-  empty: periodHeader("", "") + periodBody,
-  checked: periodHeader("", "") + completionCases[0].checked.slice(completionHeader.length),
+  empty: `${periodHeader("", "")}${periodBody}`,
+  checked: `${periodHeader("", "")}${completionCases[0].checked.slice(completionHeader.length)}`,
   invalid: { start: "2026-02-29", end: "2026-03-01" },
   reversed: { start: "2026-12-01", end: "2026-11-30" },
 };
@@ -67,15 +67,15 @@ const periodNoteProperty = "note: 'Текст [ ]'";
 const periodNoteBlock = "note: |\r\n  ---\r\n  Продолжение свойства";
 const periodEndProperty = "\r\nperiod_end:";
 const beforePeriodEnd = (markdown) => markdown
-  .replace(periodEndProperty, "\r\n" + periodNoteBlock + periodEndProperty)
-  .replace("\r\n" + periodNoteProperty, "");
+  .replace(periodEndProperty, `\r\n${periodNoteBlock}${periodEndProperty}`)
+  .replace(`\r\n${periodNoteProperty}`, "");
 const periodWithTrailingBlock = periodChange.initial.replace(periodNoteProperty, periodNoteBlock);
 const periodClosingLine = "\r\n---\r\n";
 
 export const periodWithYamlBlock = {
   initial: beforePeriodEnd(periodChange.initial),
   saved: beforePeriodEnd(periodChange.saved),
-  duplicate: periodWithTrailingBlock.replace(periodClosingLine, "\r\nperiod_end: 2026-11-28" + periodClosingLine),
+  duplicate: periodWithTrailingBlock.replace(periodClosingLine, `\r\nperiod_end: 2026-11-28${periodClosingLine}`),
   unclosed: periodWithTrailingBlock.replace(periodClosingLine, "\r\n"),
 };
 
@@ -98,29 +98,26 @@ export const taskWithTitlePrefix = {
   title: `${draftPrefix} ${draftAlias}`,
 };
 
-export const ambiguousCompletion = completionHeader + projectHeading + "\r\n" + completionRow(" ")
-  + "\r\n" + ambiguousTaskRow + afterCompletion;
-export const duplicatedCompletion = completionHeader + todayHeading + "\r\n" + completionRow(" ") + "\r\n"
-  + projectHeading + "\r\n" + completionRow(" ") + afterCompletion;
+export const ambiguousCompletion = `${completionHeader}${projectHeading}\r\n${completionRow(" ")}\r\n${ambiguousTaskRow}${afterCompletion}`;
+export const duplicatedCompletion = `${completionHeader}${todayHeading}\r\n${completionRow(" ")}\r\n${projectHeading}\r\n${completionRow(" ")}${afterCompletion}`;
 export const externalListEdit = "\n\n## Наброски\nТекст сохранён извне\n";
 
 const brokenNextHeading = "\r\n## [[Оборванный заголовок";
-const completionList = completionHeader + projectHeading + "\r\n";
+const completionList = `${completionHeader}${projectHeading}\r\n`;
 
 export const completionBeforeBrokenHeading = {
-  unchecked: completionList + completionRow(" ") + brokenNextHeading + afterCompletion,
-  checked: completionList + completionRow("x") + brokenNextHeading + afterCompletion,
+  unchecked: `${completionList}${completionRow(" ")}${brokenNextHeading}${afterCompletion}`,
+  checked: `${completionList}${completionRow("x")}${brokenNextHeading}${afterCompletion}`,
 };
-export const completionWithTwoTasks = completionList + completionRow(" ") + "\r\n- [ ] [[Вторая задача]]";
+export const completionWithTwoTasks = `${completionList}${completionRow(" ")}\r\n- [ ] [[Вторая задача]]`;
 const secondCompletionRow = (mark) => `- [${mark}] [[Вторая задача]]`;
 const previouslyCompleted = "- [x] [[Готовая задача]]";
 const remainingActive = "- [ ] [[Другая активная задача]]";
 const taskAnnotation = "\r\n<!-- Пояснение к предыдущей задаче -->\r\n";
-export const completionAcrossAnnotation = completionList + completionRow(" ") + taskAnnotation + secondCompletionRow(" ");
-export const completionAlongsideAnnotation = completionList + completionRow(" ") + taskAnnotation + secondCompletionRow("x");
-export const completedBeforeAnnotation = completionList + completionRow("x") + "\r\n"
-  + secondCompletionRow("x") + taskAnnotation + previouslyCompleted;
-export const completionWithOneActiveTask = completionList + completionRow(" ") + "\r\n" + previouslyCompleted;
+export const completionAcrossAnnotation = `${completionList}${completionRow(" ")}${taskAnnotation}${secondCompletionRow(" ")}`;
+export const completionAlongsideAnnotation = `${completionList}${completionRow(" ")}${taskAnnotation}${secondCompletionRow("x")}`;
+export const completedBeforeAnnotation = `${completionList}${completionRow("x")}\r\n${secondCompletionRow("x")}${taskAnnotation}${previouslyCompleted}`;
+export const completionWithOneActiveTask = `${completionList}${completionRow(" ")}\r\n${previouslyCompleted}`;
 const completionOrderStates = [
   [completionRow(" "), previouslyCompleted, secondCompletionRow(" "), remainingActive],
   [secondCompletionRow(" "), remainingActive, completionRow("x"), previouslyCompleted],
@@ -128,44 +125,43 @@ const completionOrderStates = [
   [remainingActive, secondCompletionRow(" "), completionRow("x"), previouslyCompleted],
 ];
 export const completionOrderCases = [todayHeading, projectHeading].map((heading) =>
-  completionOrderStates.map((rows) => completionHeader + heading + "\r\n" + rows.join("\r\n") + afterCompletion),
+  completionOrderStates.map((rows) => `${completionHeader}${heading}\r\n${rows.join("\r\n")}${afterCompletion}`),
 );
-export const completionWithShortLink = completionList + shortDraftRow;
-export const aliasedBlogTasks = completionHeader + [
+export const completionWithShortLink = `${completionList}${shortDraftRow}`;
+export const aliasedBlogTasks = `${completionHeader}${[
   todayHeading,
   "- [ ] [[Блог/Черновик блога]]",
   "## [[Блог/Блог|Контент]]",
-].join("\r\n");
+].join("\r\n")}`;
 
 const blogHeading = "## [[Блог/Блог|Контент]]";
 const activeBlogRow = "- [ ] [[Блог/Черновик блога]]";
 const draftRow = completionRow(" ");
 const moveRow = secondCompletionRow(" ");
 const commentForNextTask = "\r\n<!-- Пояснение к следующей задаче -->\r\n";
-const reorderOtherGroup = "\r\n" + blogHeading + "\r\n" + activeBlogRow + afterCompletion;
+const reorderOtherGroup = `\r\n${blogHeading}\r\n${activeBlogRow}${afterCompletion}`;
 export const reorderCases = [todayHeading, projectHeading].map((heading) => {
-  const group = completionHeader + heading + "\r\n";
+  const group = `${completionHeader}${heading}\r\n`;
   return {
-    initial: group + [draftRow, previouslyCompleted, moveRow, remainingActive].join("\r\n") + reorderOtherGroup,
-    reordered: group + [moveRow, previouslyCompleted, remainingActive, draftRow].join("\r\n") + reorderOtherGroup,
-    annotated: group + draftRow + taskAnnotation + moveRow + reorderOtherGroup,
+    initial: `${group}${[draftRow, previouslyCompleted, moveRow, remainingActive].join("\r\n")}${reorderOtherGroup}`,
+    reordered: `${group}${[moveRow, previouslyCompleted, remainingActive, draftRow].join("\r\n")}${reorderOtherGroup}`,
+    annotated: `${group}${draftRow}${taskAnnotation}${moveRow}${reorderOtherGroup}`,
   };
 });
-const reorderGroup = completionHeader + todayHeading;
+const reorderGroup = `${completionHeader}${todayHeading}`;
 const reorderRows = [draftRow, moveRow].join("\r\n");
 export const reorderWithEdgeText = [
-  { title: "перед первой задачей", markdown: reorderGroup + commentForNextTask + reorderRows + reorderOtherGroup },
-  { title: "после последней задачи", markdown: reorderGroup + "\r\n" + reorderRows + taskAnnotation + reorderOtherGroup },
+  { title: "перед первой задачей", markdown: `${reorderGroup}${commentForNextTask}${reorderRows}${reorderOtherGroup}` },
+  { title: "после последней задачи", markdown: `${reorderGroup}\r\n${reorderRows}${taskAnnotation}${reorderOtherGroup}` },
 ];
-const reorderWithinEdges = (middle) => reorderGroup + commentForNextTask
-  + [draftRow, ...middle, previouslyCompleted].join("\r\n") + taskAnnotation + reorderOtherGroup;
+const reorderWithinEdges = (middle) => `${reorderGroup}${commentForNextTask}${[draftRow, ...middle, previouslyCompleted].join("\r\n")}${taskAnnotation}${reorderOtherGroup}`;
 export const reorderInsideEdgeText = {
   initial: reorderWithinEdges([moveRow, remainingActive]),
   reordered: reorderWithinEdges([remainingActive, moveRow]),
 };
-const moveDocument = (todayRows, projectRows) => completionHeader + [
+const moveDocument = (todayRows, projectRows) => `${completionHeader}${[
   todayHeading, ...todayRows, projectHeading, ...projectRows, blogHeading,
-].join("\r\n") + afterCompletion;
+].join("\r\n")}${afterCompletion}`;
 const emptyTodayMove = [todayHeading, projectHeading, moveRow];
 export const transferTaskCases = [
   { markdown: moveDocument([draftRow], [moveRow]), today: true, completed: false, updateLinks: true },
@@ -174,6 +170,18 @@ export const transferTaskCases = [
 ];
 export const transferWithShortLink = moveDocument([shortDraftRow], []);
 export const transferWithAmbiguousToday = moveDocument([draftRow, ambiguousTaskRow], []);
+const duplicatePath = (number = "") => `Мастерская/project inbox/${draftAlias} (копия${number}).md`;
+const sourceDuplicateRow = `- [ ] [[${oldLink}|${draftAlias}]]`;
+const duplicateRow = (number) => `- [ ] [[${duplicatePath(number)}]]`;
+export const duplicateCases = {
+  today: moveDocument([sourceDuplicateRow], [moveRow]),
+  todaySaved: moveDocument([sourceDuplicateRow, duplicateRow()], [moveRow]),
+  project: moveDocument([], [sourceDuplicateRow.replace("[ ]", "[x]")]),
+  projectSaved: moveDocument([], [sourceDuplicateRow.replace("[ ]", "[x]"), duplicateRow()]),
+  occupied: duplicatePath(),
+  next: duplicatePath(" 2"),
+  savedAfterRetry: moveDocument([sourceDuplicateRow, duplicateRow(" 2")], [moveRow]),
+};
 export const archiveTaskCases = [
   { markdown: moveDocument([draftRow], [moveRow]), after: moveDocument([], [moveRow]), today: true, completed: false },
   { markdown: moveDocument([], [draftRow, moveRow]), after: moveDocument([], [moveRow]), today: false, completed: false },
@@ -181,9 +189,9 @@ export const archiveTaskCases = [
   { markdown: moveDocument([], [moveRow, completionRow("x")]), after: moveDocument([], [moveRow]), today: false, completed: true },
 ];
 
-export const createTaskMarkdown = completionHeader + [
+export const createTaskMarkdown = `${completionHeader}${[
   todayHeading, projectHeading, draftRow, previouslyCompleted, blogHeading,
-].join("\r\n") + afterCompletion;
+].join("\r\n")}${afterCompletion}`;
 
 export const danglingCreateTaskMarkdown = createTaskMarkdown.replace(
   previouslyCompleted, createTaskCase.danglingLink,
@@ -203,20 +211,20 @@ export const moveCases = [
     returned: moveDocument([activeBlogRow, previouslyCompleted], [moveRow]),
   },
   {
-    initial: completionHeader + emptyTodayMove.join("\r\n"),
-    moved: completionHeader + [todayHeading, moveRow, projectHeading].join("\r\n"),
-    returned: completionHeader + emptyTodayMove.join("\r\n"),
+    initial: `${completionHeader}${emptyTodayMove.join("\r\n")}`,
+    moved: `${completionHeader}${[todayHeading, moveRow, projectHeading].join("\r\n")}`,
+    returned: `${completionHeader}${emptyTodayMove.join("\r\n")}`,
   },
 ];
 
 export const completedMove = moveDocument([], [secondCompletionRow("x")]);
 export const ambiguousMoveCases = {
   duplicate: moveDocument([moveRow], [moveRow]),
-  annotation: moveDocument([], [moveRow + taskAnnotation + remainingActive]),
+  annotation: moveDocument([], [`${moveRow}${taskAnnotation}${remainingActive}`]),
   todayHeading: moveDocument([todayHeading], [moveRow]),
 };
 
-export const moveAfterComment = moveDocument([], [remainingActive + commentForNextTask + moveRow]);
+export const moveAfterComment = moveDocument([], [`${remainingActive}${commentForNextTask}${moveRow}`]);
 export const moveWithDuplicatePeriod = moveCases[0].initial.replace(
   "period_end:",
   "period_start: 2026-11-24\r\nperiod_end:",

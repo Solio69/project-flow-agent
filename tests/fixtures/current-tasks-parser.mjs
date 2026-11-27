@@ -5,7 +5,7 @@ const legacyProjects = ["Проект Б", "Проект А"];
 
 export const legacyFormat = {
   markdown: [
-    "\uFEFF" + legacyPeriodHeading,
+    `﻿${legacyPeriodHeading}`,
     "**Заметка**: обычный текст", "",
     "## [[Проект Б]]", "- [ ] Прочитать [[Черновик|версию]]", "- [X] Проверить результат",
     "", "---", "", "## [[Проект А]]",

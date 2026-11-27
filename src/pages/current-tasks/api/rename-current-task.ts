@@ -41,7 +41,7 @@ export async function renameCurrentTask(
 
   const filename = taskFilename(title);
   const parent = vaultParentPath(notePath);
-  const destination = parent ? parent + VAULT_PATH_SEPARATOR + filename : filename;
+  const destination = parent ? `${parent}${VAULT_PATH_SEPARATOR}${filename}` : filename;
   const isSamePath = destination === notePath;
   if (!isSamePath && destination.toLowerCase() === notePath.toLowerCase()) throw new TaskEditError(caseOnly);
 

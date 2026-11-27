@@ -14,3 +14,4 @@ const { arrowUp, arrowDown } = KEYBOARD_KEY;
 export const REORDER_KEY_SHORTCUTS = [arrowUp, arrowDown].join(SPACE);
 
 export const ICONS = { check: "check", grip: "grip-vertical", up: "arrow-up", down: "arrow-down" } as const;
+export const WORD_JOINER = "\u2060";
