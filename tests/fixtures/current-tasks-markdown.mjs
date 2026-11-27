@@ -39,6 +39,46 @@ export const completionCases = [
     checked: completionHeader + projectHeading + "\r\n" + completionRow("x") + afterCompletion },
 ];
 
+const periodBody = completionCases[0].unchecked.slice(completionHeader.length);
+const periodHeader = (start, end) =>
+  `\uFEFF---\r\nperiod_start: ${start}# начало\r\nperiod_end:${end}\r\nnote: 'Текст [ ]'\r\n---\r\n`;
+
+export const periodChange = {
+  initial: periodHeader("'2026-11-23' ", " 2026-11-29") + periodBody,
+  next: { start: "2026-11-30", end: "2026-12-01" },
+  saved: periodHeader("'2026-11-30' ", " 2026-12-01") + periodBody,
+  crossYear: { start: "2026-11-01", end: "2027-01-31" },
+  crossYearSaved: periodHeader("'2026-11-01' ", " 2027-01-31") + periodBody,
+  crossYearLabel: /01\.11\.2026 — 31\.01\.2027/,
+  empty: periodHeader("", "") + periodBody,
+  checked: periodHeader("", "") + completionCases[0].checked.slice(completionHeader.length),
+  invalid: { start: "2026-02-29", end: "2026-03-01" },
+  reversed: { start: "2026-12-01", end: "2026-11-30" },
+};
+
+export const readOnlyPeriodCases = [
+  legacyTasks,
+  periodChange.initial.replace("period_end: 2026-11-29", "period_end:\r\n  day: 29"),
+  periodChange.initial.replace("period_end: 2026-11-29", "period_end:\r\n- 2026-11-29"),
+  periodChange.initial.replace("period_end: 2026-11-29", "period_end: 2026-11-29\r\n'period_end': 2026-11-28"),
+];
+
+const periodNoteProperty = "note: 'Текст [ ]'";
+const periodNoteBlock = "note: |\r\n  ---\r\n  Продолжение свойства";
+const periodEndProperty = "\r\nperiod_end:";
+const beforePeriodEnd = (markdown) => markdown
+  .replace(periodEndProperty, "\r\n" + periodNoteBlock + periodEndProperty)
+  .replace("\r\n" + periodNoteProperty, "");
+const periodWithTrailingBlock = periodChange.initial.replace(periodNoteProperty, periodNoteBlock);
+const periodClosingLine = "\r\n---\r\n";
+
+export const periodWithYamlBlock = {
+  initial: beforePeriodEnd(periodChange.initial),
+  saved: beforePeriodEnd(periodChange.saved),
+  duplicate: periodWithTrailingBlock.replace(periodClosingLine, "\r\nperiod_end: 2026-11-28" + periodClosingLine),
+  unclosed: periodWithTrailingBlock.replace(periodClosingLine, "\r\n"),
+};
+
 export const renameWithoutAliasCases = completionCases.map(({ checked }) => {
   const before = checked.replace(draftWikiLink, `[[${oldLink}]]`);
   return { before, after: before.replace(oldLink, newLink) };

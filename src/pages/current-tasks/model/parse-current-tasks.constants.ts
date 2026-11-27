@@ -6,7 +6,11 @@ export const UNCHECKED_MARK = " ";
 export const WIKI_LINK_DELIMITERS = ["[[", "]]"] as const;
 export const WIKI_LINK_ALIAS_SEPARATOR = "|";
 
-export const FRONTMATTER_FIELD_PATTERN = /^([^:]+):[ \t]*(.*)$/;
+export const MARKDOWN_BOM = /^\uFEFF/;
+export const DATE_SHAPED_VALUE = /^\d{4}-\d{2}-\d{2}$/;
+export const YAML_SEQUENCE_ITEM = /^-(?:[ \t]|$)/;
+export const COMMENT_MARK = "#";
+export const FRONTMATTER_FIELD_PATTERN = /^([^:]+):([ \t]*)(.*)$/;
 export const INLINE_COMMENT_PATTERN = /[ \t]+#.*$/;
 export const QUOTED_VALUE_PATTERN = /^(["'])(.*)\1$/;
 export const FENCE_PATTERN = /^ {0,3}(\x60{3,}|~{3,})(.*)$/;

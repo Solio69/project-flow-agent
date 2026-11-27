@@ -278,7 +278,7 @@
   #pfa-current-demo .pfa-period-trigger .pfa-period-clear {
     display: grid;
     place-items: center;
-    width: 34px;
+    width: var(--pfa-circle-size);
     padding: 0;
     border-inline-start: 1px solid var(--pfa-border);
     border-radius: 0 9px 9px 0;
@@ -730,6 +730,8 @@
   const dateKey = (year, month, day) => new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
   const monthStart = value => value.slice(0, 7) + "-01";
   const shortDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
+  const shortMonthDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", timeZone: "UTC" });
+  const numericDate = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
   const longDate = new Intl.DateTimeFormat("ru-RU", { dateStyle: "full", timeZone: "UTC" });
   const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long", timeZone: "UTC" });
   const dayOffsets = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
@@ -746,13 +748,14 @@
     flashTimer = setTimeout(() => { status.textContent = ""; }, 4000);
   }
 
-  function periodText(from = state.start, to = state.end) {
+  function periodText(from = state.start, to = state.end, compact = false) {
     if (!from || !to) return "Выбрать даты";
     const start = calendarDate(from);
     const end = calendarDate(to);
     if (from === to) return shortDate.format(start);
     if (monthStart(from) === monthStart(to)) return `${start.getUTCDate()}–${shortDate.format(end)}`;
-    const format = start.getUTCFullYear() === end.getUTCFullYear() ? shortDate
+    const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+    const format = compact ? (sameYear ? shortMonthDate : numericDate) : sameYear ? shortDate
       : new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
     return `${format.format(start)} — ${format.format(end)}`;
   }
@@ -841,7 +844,8 @@
     closeMenu();
     completedToggle.checked = state.showCompleted;
     completedLabel.textContent = state.showCompleted ? "Скрыть выполненные" : "Показать выполненные";
-    periodTrigger.querySelector("[data-period]").textContent = periodText();
+    periodTrigger.querySelector("[data-period]").textContent = periodText(state.start, state.end, true);
+    periodTrigger.setAttribute("aria-label", periodText());
     periodClear.hidden = !state.start || !state.end;
     lists.innerHTML = `<section class="pfa-panel pfa-today" aria-labelledby="pfa-today-heading">
       <header class="pfa-panel-head">

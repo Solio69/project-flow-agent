@@ -5,7 +5,9 @@
   margin-block: 10px 16px;
 }
 
-.pfa-current-tasks .pfa-tasks-toolbar :is(.pfa-period, .pfa-control, .pfa-completed-toggle) {
+.pfa-current-tasks .pfa-tasks-toolbar > :is(.pfa-control, .pfa-completed-toggle),
+.pfa-current-tasks .pfa-period-control > .pfa-period-trigger,
+.pfa-current-tasks .pfa-period-control > .pfa-period {
   display: inline-flex;
   max-inline-size: 100%;
   min-block-size: var(--pfa-circle-size);
@@ -58,13 +60,4 @@
   .pfa-current-tasks .pfa-switch-track {
     display: none;
   }
-}
-
-.pfa-current-tasks .pfa-period-label {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }

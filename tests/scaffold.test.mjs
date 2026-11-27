@@ -19,7 +19,7 @@ import {
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
   moveAfterComment, moveCases, moveWithDuplicatePeriod, obsoleteTasks, propertyTasks,
-  renameWithAlias, renameWithoutAliasCases, reorderCases, reorderInsideEdgeText, reorderWithEdgeText, taskWithTitlePrefix, transferTaskCases,
+  periodChange, periodWithYamlBlock, readOnlyPeriodCases, renameWithAlias, renameWithoutAliasCases, reorderCases, reorderInsideEdgeText, reorderWithEdgeText, taskWithTitlePrefix, transferTaskCases,
   archiveTaskCases, transferWithAmbiguousToday, transferWithShortLink,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
@@ -365,6 +365,76 @@ async function openTasksFixture(t, markdown) {
   t.after(() => fixture.activeLeaf.view.onClose());
   return fixture;
 }
+
+test("выбор периода пишет только две даты, а очистка оставляет задачи редактируемыми", async (t) => {
+  const { initial, next, saved, crossYear, crossYearSaved, crossYearLabel, empty, checked } = periodChange;
+  const { controls, mounts, writes } = await openTasksFixture(t, initial);
+  const props = () => mounts.at(-1).element.props;
+  assert.equal((await props().onChangePeriod(next)).ok, true);
+  assert.equal(controls.markdown, saved);
+  assert.deepEqual({ ...props().state.document.period }, next);
+  assert.equal((await props().onChangePeriod(crossYear)).ok, true);
+  assert.equal(controls.markdown, crossYearSaved);
+  assert.match(mounts.at(-1).markup, crossYearLabel);
+  assert.equal((await props().onChangePeriod(undefined)).ok, true);
+  assert.equal(controls.markdown, empty);
+  assert.equal(props().state.document.period, undefined);
+  assert.equal(props().state.document.diagnostics.length, 0);
+  await completeFirstTask(mounts);
+  assert.equal(controls.markdown, checked);
+  assert.deepEqual(writes, [saved, crossYearSaved, empty, checked]);
+});
+
+test("выбор периода сохраняет внешнюю правку и отклоняет ошибочные даты", async (t) => {
+  const { initial, next, invalid, reversed } = periodChange;
+  const { controls, emitModify, mounts, writes } = await openTasksFixture(t, initial);
+  const props = () => mounts.at(-1).element.props;
+  const original = props().state.document;
+  const change = (period, expectedSource) => props().onChangePeriod(period, expectedSource);
+  assert.equal((await change(invalid)).ok, false);
+  assert.equal((await change(reversed)).ok, false);
+  assert.equal(controls.markdown, initial);
+  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  assert.equal((await change(next)).ok, false);
+  assert.equal(controls.markdown, initial + externalListEdit);
+  controls.beforeProcess = undefined;
+  await emitModify();
+  assert.equal((await change(next, original)).ok, false);
+  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.deepEqual(writes, []);
+});
+
+test("календарь не меняет старую шапку, вложенные или повторяющиеся свойства", async (t) => {
+  for (const markdown of readOnlyPeriodCases) {
+    const { mounts, writes } = await openTasksFixture(t, markdown);
+    assert.equal(mounts.at(-1).element.props.onChangePeriod, undefined);
+    assert.deepEqual(writes, []);
+  }
+});
+
+test("календарь сохраняет соседнее многострочное свойство с вложенным разделителем", async (t) => {
+  const { initial, saved } = periodWithYamlBlock;
+  const { controls, mounts, writes } = await openTasksFixture(t, initial);
+  const { onChangePeriod } = mounts.at(-1).element.props;
+  assert.equal(typeof onChangePeriod, "function");
+  assert.equal((await onChangePeriod(periodChange.next)).ok, true);
+  assert.equal(controls.markdown, saved);
+  assert.deepEqual(writes, [saved]);
+});
+
+test("календарь учитывает дубль свойства после вложенного разделителя", async (t) => {
+  const { mounts, writes } = await openTasksFixture(t, periodWithYamlBlock.duplicate);
+  const { markup, element: { props: { onChangePeriod } } } = mounts.at(-1);
+  assert.equal(onChangePeriod, undefined);
+  assert.match(markup, moveFeedback.duplicatePeriod);
+  assert.deepEqual(writes, []);
+});
+
+test("календарь отклоняет незакрытый YAML с вложенным разделителем", async (t) => {
+  const { mounts, writes } = await openTasksFixture(t, periodWithYamlBlock.unclosed);
+  assert.equal(mounts.at(-1).element.props.onChangePeriod, undefined);
+  assert.deepEqual(writes, []);
+});
 
 test("заголовок открывает точный источник в новой вкладке", async (t) => {
   const fixture = await openTasksFixture(t, propertyTasks);
@@ -841,11 +911,12 @@ test("перенос отменяется, когда другой проект 
 test("дубль свойства периода оставляет просмотр и отключает команды записи", async (t) => {
   const { mounts, writes } = await openTasksFixture(t, moveWithDuplicatePeriod);
   const { markup, element: { props } } = mounts.at(-1);
-  const { onMoveTask, onSetCompleted } = props;
+  const { onMoveTask, onSetCompleted, onChangePeriod } = props;
   assert.match(markup, moveFeedback.duplicatePeriod);
   assert.match(markup, moveFeedback.disabledMove);
   assert.equal(onMoveTask, undefined);
   assert.equal(onSetCompleted, undefined);
+  assert.equal(onChangePeriod, undefined);
   assert.deepEqual(writes, []);
 });
 

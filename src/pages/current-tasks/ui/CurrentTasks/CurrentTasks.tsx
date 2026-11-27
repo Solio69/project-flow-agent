@@ -14,6 +14,7 @@ import { canRestoreTaskFocus, focusTaskControl, focusTaskElement } from "../task
 import { PANEL_TITLE_SELECTOR, TASK_PANEL_SELECTOR, TASK_ROW_PATH_SELECTOR } from "../task-focus.constants";
 import type { ReorderTask } from "../../model/task-reorder";
 import type { MoveTask } from "../../model/task-move";
+import type { ChangePeriod } from "../../model/task-period";
 import type { RenameTask } from "../../model/task-rename";
 import type { TransferReceipt, TransferSelection, TransferTask } from "../../model/task-transfer";
 import { LOADING_STATUS } from "../../model/view-state.constants";
@@ -40,7 +41,7 @@ function focusCreatedTask(control: HTMLButtonElement, path: string): boolean {
 }
 
 export function CurrentTasks({
-  title, state, completedVisibility: { get, set, subscribe },
+  title, state, completedVisibility: { get, set, subscribe }, onChangePeriod,
   onOpenNote, onOpenSource, onSetCompleted, onMoveTask, onReorderTask, onCreateTask, onRenameTask, onTransferTask, onArchiveTask,
 }: {
   title: string;
@@ -48,6 +49,7 @@ export function CurrentTasks({
   completedVisibility: CompletedVisibility;
   onOpenNote: OpenNote;
   onOpenSource: () => Promise<void>;
+  onChangePeriod?: ChangePeriod;
   onSetCompleted?: SetCompleted;
   onMoveTask?: MoveTask;
   onReorderTask?: ReorderTask;
@@ -159,6 +161,7 @@ export function CurrentTasks({
       return (
         <TasksList
           document={document}
+          onChangePeriod={onChangePeriod}
           showCompleted={isCompletedVisible}
           onShowCompletedChange={set}
           onOpenNote={onOpenNote}

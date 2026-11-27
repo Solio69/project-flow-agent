@@ -20,6 +20,7 @@ import {
 } from "../task-focus.constants";
 import { isTodayGroup } from "../../model/task-group";
 import type { MoveTask } from "../../model/task-move";
+import type { ChangePeriod } from "../../model/task-period";
 import type { ReorderTask } from "../../model/task-reorder";
 import type { TransferReceipt } from "../../model/task-transfer";
 import type { RequestTransferTask } from "../dialogs/TaskTransferDialog";
@@ -52,6 +53,7 @@ export function TasksList({
   document,
   showCompleted: isCompletedVisible,
   onShowCompletedChange,
+  onChangePeriod,
   onOpenNote,
   onSetCompleted,
   onMoveTask,
@@ -65,6 +67,7 @@ export function TasksList({
   document: TasksSnapshot;
   showCompleted: boolean;
   onShowCompletedChange: (visible: boolean) => void;
+  onChangePeriod?: ChangePeriod;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
   onMoveTask?: MoveTask;
@@ -75,7 +78,7 @@ export function TasksList({
   onRequestArchiveTask?: RequestArchiveTask;
   lastTransfer?: TransferReceipt;
 }) {
-  const { period, groups, diagnostics } = document;
+  const { period, isPeriodEditable, groups, diagnostics } = document;
   const completedToggleRef = useRef<HTMLButtonElement>(null);
   const panelsRef = useRef<HTMLDivElement>(null);
   const moveFocus = useRef<MoveFocus | null>(null);
@@ -175,6 +178,9 @@ export function TasksList({
     <>
       <TasksToolbar
         period={period}
+        isPeriodEditable={isPeriodEditable}
+        onChangePeriod={onChangePeriod}
+        periodSource={document}
         showCompleted={isCompletedVisible}
         onShowCompletedChange={onShowCompletedChange}
         completedToggleRef={completedToggleRef}

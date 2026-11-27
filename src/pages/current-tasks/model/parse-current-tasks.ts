@@ -1,20 +1,17 @@
-import { iso } from "zod/mini";
+import { EMPTY_STRING } from "../../../shared/lib";
 import { noteName } from "../../../shared/lib/note-path";
 import { TASK_GROUP_KIND, TASKS_FORMAT } from "./current-tasks.constants";
 import {
   DIAGNOSTIC_COPY,
   FENCE_PATTERN,
-  FRONTMATTER_DELIMITER,
-  FRONTMATTER_FIELD_PATTERN,
   HEADING_PATTERN,
   HORIZONTAL_RULE_PATTERN,
-  INLINE_COMMENT_PATTERN,
   LEGACY_DATE_RANGE_PATTERN,
   LEGACY_PERIOD_HEADING_PATTERN,
+  MARKDOWN_BOM,
   PERIOD_FIELD,
   PROJECT_HEADING_MARKER,
   PROJECT_LINK_PATTERN,
-  QUOTED_VALUE_PATTERN,
   TASK_LINKS_PATTERN,
   TASK_PATTERN,
   TODAY_HEADING,
@@ -23,55 +20,20 @@ import {
   WIKI_LINK_ALIAS_SEPARATOR,
   WIKI_LINK_DELIMITERS,
 } from "./parse-current-tasks.constants";
+import { periodDateSchema, readPeriodProperties, writablePeriodProperties } from "./period-properties";
 import type {
   ActionDiagnostic, CurrentTask, CurrentTaskGroup, CurrentTasksDocument, TaskPeriod, TasksFormat,
 } from "./types";
 
-const dateSchema = iso.date();
 const {
-  unclosedFrontmatter, duplicatePeriodField, invalidPeriodDate, reversedPeriod,
+  invalidPeriodDate, reversedPeriod,
   missingLegacyDates, invalidTask, ambiguousTaskLink, expectedTaskLink, invalidProjectHeading,
 } = DIAGNOSTIC_COPY;
 
-type PeriodKey = (typeof PERIOD_FIELD)[keyof typeof PERIOD_FIELD];
 type SourceLine = { line: number; text: string };
-
-function isFrontmatterDelimiter(line: string): boolean {
-  return line.trim() === FRONTMATTER_DELIMITER;
-}
 
 function hasWikiLinkDelimiter(text: string): boolean {
   return WIKI_LINK_DELIMITERS.some((delimiter) => text.includes(delimiter));
-}
-
-function readFrontmatter(lines: string[], diagnostics: ActionDiagnostic[]) {
-  const fields = new Map<PeriodKey, SourceLine>();
-  let hasDuplicatePeriodFields = false;
-  if (!isFrontmatterDelimiter(lines[0])) return { fields, bodyStart: 0, hasDuplicatePeriodFields };
-
-  const end = lines.findIndex((line, index) => index > 0 && isFrontmatterDelimiter(line));
-  if (end === -1) {
-    diagnostics.push({ line: 1, message: unclosedFrontmatter });
-    return { fields, bodyStart: 1, hasDuplicatePeriodFields };
-  }
-
-  for (let index = 1; index < end; index++) {
-    const match = FRONTMATTER_FIELD_PATTERN.exec(lines[index]);
-    if (!match) continue;
-    const [, key, rawValue] = match;
-    if (key !== PERIOD_FIELD.start && key !== PERIOD_FIELD.end) continue;
-    const line = index + 1;
-    if (fields.has(key)) {
-      hasDuplicatePeriodFields = true;
-      diagnostics.push({ line, message: duplicatePeriodField });
-      continue;
-    }
-    const value = rawValue.replace(INLINE_COMMENT_PATTERN, "").trim();
-    const quoted = QUOTED_VALUE_PATTERN.exec(value);
-    fields.set(key, { line, text: quoted?.[2] ?? value });
-  }
-
-  return { fields, bodyStart: end + 1, hasDuplicatePeriodFields };
 }
 
 function* markdownLines(lines: string[], start: number): Generator<SourceLine> {
@@ -104,7 +66,7 @@ function validatePeriod(
   diagnostics: ActionDiagnostic[],
 ): TaskPeriod | undefined {
   function validated(field: SourceLine | undefined, label: string) {
-    const result = dateSchema.safeParse(field?.text);
+    const result = periodDateSchema.safeParse(field?.text);
     if (result.success) return result.data;
     diagnostics.push({ line: field?.line, message: invalidPeriodDate(label) });
   }
@@ -183,14 +145,20 @@ function readTask(
 }
 
 export function parseCurrentTasks(markdown: string): CurrentTasksDocument {
-  const lines = markdown.replace(/^\uFEFF/, "").split(/\r\n?|\n/);
+  const lines = markdown.replace(MARKDOWN_BOM, EMPTY_STRING).split(/\r\n?|\n/);
   const diagnostics: ActionDiagnostic[] = [];
-  const { fields, bodyStart, hasDuplicatePeriodFields } = readFrontmatter(lines, diagnostics);
+  const properties = readPeriodProperties(lines, diagnostics);
+  const { fields, bodyStart, hasDuplicatePeriodFields } = properties;
+  const writable = writablePeriodProperties(properties);
+  const { start, end } = writable ?? {};
+  const isPeriodEditable = Boolean(writable);
+  const isPeriodEmpty = isPeriodEditable && !start?.text && !end?.text;
   const body = Array.from(markdownLines(lines, bodyStart));
   const format = fields.size ? TASKS_FORMAT.properties : TASKS_FORMAT.legacy;
-  const period = format === TASKS_FORMAT.properties
-    ? validatePeriod(fields.get(PERIOD_FIELD.start), fields.get(PERIOD_FIELD.end), diagnostics)
-    : readLegacyPeriod(body, diagnostics);
+  let period: TaskPeriod | undefined;
+  if (format === TASKS_FORMAT.legacy) period = readLegacyPeriod(body, diagnostics);
+  else if (!isPeriodEmpty)
+    period = validatePeriod(fields.get(PERIOD_FIELD.start), fields.get(PERIOD_FIELD.end), diagnostics);
 
   const groups: CurrentTaskGroup[] = [];
   let group: CurrentTaskGroup | undefined;
@@ -220,5 +188,5 @@ export function parseCurrentTasks(markdown: string): CurrentTasksDocument {
     const task = readTask(source, format, diagnostics);
     if (task) group.tasks.push(task);
   }
-  return { format, period, hasDuplicatePeriodFields, groups, diagnostics };
+  return { format, period, hasDuplicatePeriodFields, isPeriodEmpty, isPeriodEditable, groups, diagnostics };
 }

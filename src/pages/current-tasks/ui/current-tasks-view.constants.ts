@@ -1,6 +1,7 @@
 import { CURRENT_TASKS_FILENAME } from "../model/current-tasks.constants";
 
 export const ERROR_COPY = {
+  periodLog: "Project Flow Agent: изменение дат периода",
   createLog: "Project Flow Agent: создание задачи",
   renameLog: "Project Flow Agent: переименование задачи",
   transferLog: "Project Flow Agent: перенос задачи в другой проект",

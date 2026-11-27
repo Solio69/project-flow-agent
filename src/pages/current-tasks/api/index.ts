@@ -1,4 +1,5 @@
 export { archiveCurrentTask } from "./archive-current-task";
+export { changeTaskPeriod } from "./change-task-period";
 export { createCurrentTask } from "./create-task";
 export { renameCurrentTask } from "./rename-current-task";
 export { transferCurrentTask } from "./transfer-current-task";
