@@ -34,6 +34,7 @@ import {
 } from "../task-focus";
 import type { ReorderTask } from "../../model/task-reorder";
 import { describeTaskProjects } from "../../model/task-projects";
+import type { CopyTaskPath } from "../../model/task-note-path";
 import type { TransferReceipt } from "../../model/task-transfer";
 import {
   COPY,
@@ -78,6 +79,8 @@ export function TaskPanel({
   onRequestRenameTask,
   onRequestTransferTask,
   onRequestArchiveTask,
+  onRequestDuplicateTask,
+  onCopyTaskPath,
   projectGroups,
   lastTransfer,
 }: {
@@ -93,6 +96,8 @@ export function TaskPanel({
   onRequestRenameTask?: RequestRenameTask;
   onRequestTransferTask?: RequestTransferTask;
   onRequestArchiveTask?: RequestArchiveTask;
+  onRequestDuplicateTask?: TaskFromButton;
+  onCopyTaskPath?: CopyTaskPath;
   projectGroups: LinkedTaskGroup[];
   lastTransfer?: TransferReceipt;
 }) {
@@ -196,7 +201,7 @@ export function TaskPanel({
           )
       : undefined;
     const taskProjects =
-      (onRequestTransferTask || onRequestArchiveTask) &&
+      (onRequestTransferTask || onRequestArchiveTask || onRequestDuplicateTask) &&
       notePath &&
       describeTaskProjects(projectGroups, notePath);
     const transferFromButton: TaskFromButton | undefined =
@@ -225,6 +230,8 @@ export function TaskPanel({
         onRenameTask={renameFromButton}
         onTransferTask={transferFromButton}
         onArchiveTask={archiveFromButton}
+        onDuplicateTask={taskProjects ? onRequestDuplicateTask : undefined}
+        onCopyTaskPath={onCopyTaskPath}
         onReorderByKey={reorderByKey}
         onTaskMarked={rememberCompletionFocus}
       />

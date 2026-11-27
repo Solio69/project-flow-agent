@@ -109,6 +109,46 @@
   overflow-wrap: anywhere;
 }
 
+.pfa-current-tasks button.pfa-task-copy {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 25px;
+  block-size: 25px;
+  min-block-size: 0;
+  margin-inline-start: 3px;
+  padding: 0;
+  vertical-align: middle;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--pfa-ui-accent);
+}
+
+@media (hover: hover) {
+  .pfa-current-tasks button.pfa-task-copy:hover {
+    background: var(--pfa-bg);
+  }
+}
+
+@media (pointer: coarse) {
+  .pfa-current-tasks button.pfa-task-copy {
+    inline-size: var(--pfa-circle-size);
+    block-size: var(--pfa-circle-size);
+    justify-items: start;
+  }
+
+  @container (max-width: 360px) {
+    .pfa-current-tasks .pfa-task {
+      grid-template-columns: 14px 18px minmax(0, 1fr);
+    }
+
+    .pfa-current-tasks .pfa-task-actions {
+      grid-column: 3;
+    }
+  }
+}
+
 .pfa-current-tasks .pfa-task-label :is(.pfa-project-emoji, .pfa-project-icon) {
   margin-inline-end: 6px;
 }

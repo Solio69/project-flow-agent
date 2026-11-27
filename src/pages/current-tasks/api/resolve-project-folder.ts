@@ -26,7 +26,7 @@ export function resolveProjectFolder(
   const { file: projectFile } = resolveLink(app, sourcePath, link);
   if (!projectFile || projectFile.path !== projectPath) throw new TaskEditError(projectMissing);
 
-  const folderPath = parent + VAULT_PATH_SEPARATOR + folderName;
+  const folderPath = `${parent}${VAULT_PATH_SEPARATOR}${folderName}`;
   const folder = vault.getFolderByPath(folderPath);
   if (!folder) throw new TaskEditError(missingFolder);
   const source = requireSource(app, sourcePath);

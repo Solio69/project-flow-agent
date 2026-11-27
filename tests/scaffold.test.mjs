@@ -12,9 +12,9 @@ import { runInNewContext } from "node:vm";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createCurrentTasksFixture } from "./fixtures/current-tasks.mjs";
+import { appendExternalListEdit, createClipboardFixture, createCurrentTasksFixture } from "./fixtures/current-tasks.mjs";
 import {
-  createTaskAlreadyToday, createTaskMarkdown, danglingCreateTaskMarkdown, danglingHeadingTaskMarkdown,
+  createTaskAlreadyToday, createTaskMarkdown, danglingCreateTaskMarkdown, danglingHeadingTaskMarkdown, duplicateCases,
   aliasedBlogTasks, ambiguousCompletion, ambiguousMoveCases, completedBeforeAnnotation, completedMove, completionAcrossAnnotation, completionAlongsideAnnotation,
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
@@ -25,7 +25,7 @@ import {
 import {
   createTaskCase,
   aliasedBlogExpected, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown, iconizeFixture,
-  moveFeedback, moveProjectConflict, projectLinkCase, reorderTasks, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
+  moveFeedback, moveProjectConflict, notePathCopy, projectLinkCase, reorderTasks, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
   activeTaskOrder, archiveTaskCase, existingPluginSettings, renameTaskCase, transferTaskCase, visibleTaskOrderBeforeWrite, watchFixture,
 } from "./fixtures/scaffold-data.mjs";
 
@@ -80,16 +80,16 @@ test("архивирование защищает назначение и пов
   assert.deepEqual(renames, []);
   controls.unindexedPaths = [];
   controls.updateLinksAfterRename = false;
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   const interrupted = await archive();
   assert.match(interrupted.message, partial);
   assert.ok(interrupted.message.includes(taskPath));
   assert.equal(note.path, taskPath);
-  assert.equal(controls.markdown, markdown + externalListEdit);
+  assert.equal(controls.markdown, `${markdown}${externalListEdit}`);
   controls.beforeProcess = undefined;
   assert.equal((await archive(interrupted.pending)).ok, true);
   assert.equal((await archive(interrupted.pending)).ok, true);
-  assert.equal(controls.markdown, after + externalListEdit);
+  assert.equal(controls.markdown, `${after}${externalListEdit}`);
   assert.deepEqual(renames, [taskPath]);
 });
 
@@ -153,7 +153,7 @@ test("перенос защищает занятый путь и повторя�
   assert.equal(note.path, oldPath);
   controls.unindexedPaths = [];
   controls.updateLinksAfterRename = false;
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   const missed = await transfer();
   assert.match(missed.message, partial);
   assert.equal(note.path, taskPath);
@@ -329,13 +329,13 @@ test("галочки защищены от дубликатов, внешних 
   controls.markdown = first.unchecked;
   await ribbonClick();
 
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   await completeFirstTask(mounts);
-  assert.equal(controls.markdown, first.unchecked + externalListEdit);
+  assert.equal(controls.markdown, `${first.unchecked}${externalListEdit}`);
   assert.match(notices.at(-1), completionFeedback.conflict);
   controls.beforeProcess = () => { note.stat.mtime++; };
   await completeFirstTask(mounts);
-  assert.equal(controls.markdown, first.unchecked + externalListEdit);
+  assert.equal(controls.markdown, `${first.unchecked}${externalListEdit}`);
   assert.match(notices.at(-1), completionFeedback.taskChanged);
   controls.beforeProcess = undefined;
 
@@ -366,6 +366,134 @@ async function openTasksFixture(t, markdown) {
   return fixture;
 }
 
+test("копирование использует полный путь с расширением и проверяет ссылку", async (t) => {
+  const { mounts, controls, notices, writes } = await openTasksFixture(t, transferWithShortLink);
+  const { onCopyTaskPath, state: { document: { groups } } } = mounts.at(-1).element.props;
+  const [task] = groups[0].tasks;
+  const { clipboard, copied } = createClipboardFixture();
+  await onCopyTaskPath(task, clipboard);
+  assert.deepEqual(copied, [notePathCopy.absolute]);
+  assert.match(notices.at(-1), notePathCopy.copied);
+  controls.shortLinkDestination = null;
+  await onCopyTaskPath(task, clipboard);
+  assert.deepEqual(copied, [notePathCopy.absolute]);
+  assert.match(notices.at(-1), notePathCopy.inaccessible);
+  assert.deepEqual(writes, []);
+});
+
+test("копирование пути отклоняет ссылку задачи на вложение", async (t) => {
+  const { controls, emitModify, mounts, notices, taskAttachment, writes } = await openTasksFixture(t, transferWithShortLink);
+  const { clipboard, copied } = createClipboardFixture();
+  controls.shortLinkDestination = taskAttachment;
+  await emitModify();
+  const { onCopyTaskPath, state: { document: { groups } } } = mounts.at(-1).element.props;
+  const [task] = groups[0].tasks;
+  assert.equal(task.notePath, notePathCopy.attachment);
+  await onCopyTaskPath(task, clipboard);
+  assert.deepEqual(copied, []);
+  assert.match(notices.at(-1), notePathCopy.unsupported);
+  assert.deepEqual(writes, []);
+});
+
+test("дублирование создаёт пустой файл с новым ID в исходном проекте и списке", async (t) => {
+  const { today, todaySaved, project, projectSaved, occupied } = duplicateCases;
+  for (const [initial, saved] of [[today, todaySaved], [project, projectSaved]]) {
+    const { controls, createdNotes, mounts, writes } = await openTasksFixture(t, initial);
+    controls.taskMarkdown = renameTaskCase.body;
+    const { onDuplicateTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+    const original = groups.flatMap(({ tasks }) => tasks).find(({ notePath }) => notePath === renameTaskCase.oldPath);
+    assert.equal(await onDuplicateTask(original), occupied);
+    assert.deepEqual([...createdNotes.keys()], [occupied]);
+    const { markdown } = createdNotes.get(occupied);
+    assert.match(markdown, /^---\nid: tsk_[a-f\d]{32}\n---\n$/u);
+    assert.ok(!markdown.includes(original.id));
+    assert.equal(controls.taskMarkdown, renameTaskCase.body);
+    assert.deepEqual(writes, [saved]);
+  }
+});
+
+test("дублирование пропускает занятое имя и повторяет запись уже созданной копии", async (t) => {
+  const { today, occupied, next, savedAfterRetry } = duplicateCases;
+  const { mounts, controls, createdNotes, writes } = await openTasksFixture(t, today);
+  const duplicate = () => {
+    const { onDuplicateTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+    return onDuplicateTask(groups[0].tasks[0]);
+  };
+  controls.unindexedPaths = [occupied];
+  controls.beforeProcess = () => appendExternalListEdit(controls);
+  assert.equal(await duplicate(), undefined);
+  assert.deepEqual([...createdNotes.keys()], [next]);
+  assert.deepEqual(writes, []);
+  controls.beforeProcess = undefined;
+  assert.equal(await duplicate(), next);
+  assert.deepEqual([...createdNotes.keys()], [next]);
+  assert.deepEqual(writes, [`${savedAfterRetry}${externalListEdit}`]);
+});
+
+test("дублирование отменяет запись, если исходная ссылка перестала вести к выбранной заметке", async (t) => {
+  const { controls, mounts, createdNotes, writes } = await openTasksFixture(t, transferWithShortLink);
+  const { onDuplicateTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+  controls.beforeReadSource = () => { controls.shortLinkDestination = null; };
+  assert.equal(await onDuplicateTask(groups[0].tasks[0]), undefined);
+  assert.equal(createdNotes.size, 0);
+  assert.deepEqual(writes, []);
+});
+
+test("дублирование отменяет создание после изменения ID исходной задачи", async (t) => {
+  const { today } = duplicateCases;
+  const { controls, mounts, note, createdNotes, writes } = await openTasksFixture(t, today);
+  const { onDuplicateTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+  controls.beforeReadSource = () => {
+    note.stat.mtime++;
+    controls.taskMarkdown = differentTaskNoteMarkdown;
+  };
+
+  assert.equal(await onDuplicateTask(groups[0].tasks[0]), undefined);
+  assert.equal(createdNotes.size, 0);
+  assert.deepEqual(writes, []);
+});
+
+test("дублирование прекращает запись после смены ID и повторно использует файл", async (t) => {
+  const { today, todaySaved, occupied } = duplicateCases;
+  const { controls, emitModify, mounts, note, createdNotes, writes } = await openTasksFixture(t, today);
+  const duplicate = () => {
+    const { onDuplicateTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+    return onDuplicateTask(groups[0].tasks[0]);
+  };
+  controls.beforeProcess = () => {
+    note.stat.mtime++;
+    controls.taskMarkdown = differentTaskNoteMarkdown;
+  };
+
+  assert.equal(await duplicate(), undefined);
+  assert.deepEqual([...createdNotes.keys()], [occupied]);
+  assert.deepEqual(writes, []);
+  const copy = createdNotes.get(occupied);
+
+  controls.beforeProcess = undefined;
+  controls.taskMarkdown = taskNoteMarkdown;
+  note.stat.mtime++;
+  await emitModify();
+  assert.equal(await duplicate(), occupied);
+  assert.equal(createdNotes.get(occupied), copy);
+  assert.deepEqual(writes, [todaySaved]);
+});
+
+test("дублирование не создаёт файл после изменения списка во время проверки имени", async (t) => {
+  const { today, occupied } = duplicateCases;
+  const { controls, mounts, createdNotes, writes } = await openTasksFixture(t, today);
+  const { onDuplicateTask, state: { document: { groups } } } = mounts.at(-1).element.props;
+  let checks = 0;
+  controls.beforeCheckPath = (path) => {
+    if (path === occupied && ++checks === 2) appendExternalListEdit(controls);
+  };
+
+  assert.equal(await onDuplicateTask(groups[0].tasks[0]), undefined);
+  assert.equal(controls.markdown, `${today}${externalListEdit}`);
+  assert.equal(createdNotes.size, 0);
+  assert.deepEqual(writes, []);
+});
+
 test("выбор периода пишет только две даты, а очистка оставляет задачи редактируемыми", async (t) => {
   const { initial, next, saved, crossYear, crossYearSaved, crossYearLabel, empty, checked } = periodChange;
   const { controls, mounts, writes } = await openTasksFixture(t, initial);
@@ -394,13 +522,13 @@ test("выбор периода сохраняет внешнюю правку �
   assert.equal((await change(invalid)).ok, false);
   assert.equal((await change(reversed)).ok, false);
   assert.equal(controls.markdown, initial);
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   assert.equal((await change(next)).ok, false);
-  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.equal(controls.markdown, `${initial}${externalListEdit}`);
   controls.beforeProcess = undefined;
   await emitModify();
   assert.equal((await change(next, original)).ok, false);
-  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.equal(controls.markdown, `${initial}${externalListEdit}`);
   assert.deepEqual(writes, []);
 });
 
@@ -612,7 +740,7 @@ test("переименование показывает целые снимки 
   assert.equal(afterDelayedRead, oldPath);
   assert.equal(shownTask().notePath, newPath);
 
-  controls.markdown += externalListEdit;
+  appendExternalListEdit(controls);
   await emitModify();
   assert.equal(current().state.document.sourceMarkdown, controls.markdown);
 });
@@ -624,7 +752,7 @@ test("переименование после внешней правки тре
   const { state: { document: { groups } } } = mounts.at(-1).element.props;
   const [task] = groups.flatMap(({ tasks }) => tasks);
   const rename = (sourceMarkdown) => mounts.at(-1).element.props.onRenameTask({ task, title: newTitle, sourceMarkdown });
-  controls.markdown += externalListEdit;
+  appendExternalListEdit(controls);
   const first = await rename(unchecked);
   assert.match(first.message, changed);
   assert.equal(first.latestSourceMarkdown, controls.markdown);
@@ -658,12 +786,12 @@ test("частичный сбой создания допускает добав
   const { mounts, controls, writes, createdNotes } = await openTasksFixture(t, createTaskMarkdown);
   const { title, projectPath, notePath, row } = createTaskCase;
   const create = (pending) => mounts.at(-1).element.props.onCreateTask({ title, projectPath, pending });
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   const result = await create();
   assert.equal(result.ok, false);
   assert.equal(result.pending.path, notePath);
   assert.equal(createdNotes.size, 1);
-  assert.equal(controls.markdown, createTaskMarkdown + externalListEdit);
+  assert.equal(controls.markdown, `${createTaskMarkdown}${externalListEdit}`);
   const { markdown } = createdNotes.get(notePath);
   assert.deepEqual(writes, []);
 
@@ -700,7 +828,7 @@ test("повтор сохраняет частичный результат, е�
   const { mounts, controls, emitModify, createdNotes, writes } = await openTasksFixture(t, createTaskMarkdown);
   const { title, projectPath } = createTaskCase;
   const create = (pending) => mounts.at(-1).element.props.onCreateTask({ title, projectPath, pending });
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   const { pending } = await create();
   assert.ok(pending);
 
@@ -796,9 +924,9 @@ test("перестановка отвергает другую группу, в�
   await reorderShownTask(mounts, completed);
   assert.equal(controls.markdown, initial);
 
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   await reorderShownTask(mounts, second);
-  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.equal(controls.markdown, `${initial}${externalListEdit}`);
   assert.match(notices.at(-1), completionFeedback.conflict);
 
   controls.beforeProcess = undefined;
@@ -853,14 +981,14 @@ test("активная задача переносится в «Сегодня»
 test("перенос отменяется при внешней правке, дубле, пояснении и повторном блоке «Сегодня»", async (t) => {
   const { initial } = moveCases[0];
   const { mounts, notices, controls, writes, emitModify, projectNote } = await openTasksFixture(t, initial);
-  controls.beforeProcess = () => { controls.markdown += externalListEdit; };
+  controls.beforeProcess = () => appendExternalListEdit(controls);
   await moveShownTask(mounts)();
-  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.equal(controls.markdown, `${initial}${externalListEdit}`);
   assert.match(notices.at(-1), completionFeedback.conflict);
 
   controls.beforeProcess = () => { controls.projectLinkDestination = null; };
   await moveShownTask(mounts)();
-  assert.equal(controls.markdown, initial + externalListEdit);
+  assert.equal(controls.markdown, `${initial}${externalListEdit}`);
   assert.match(notices.at(-1), moveFeedback.projectSection);
 
   controls.projectLinkDestination = projectNote;
@@ -1269,7 +1397,7 @@ test("режим VS Code читает локальный путь и перес�
   );
   let errors = "";
   child.stderr.setEncoding("utf8").on("data", (text) => {
-    errors += text;
+    errors = `${errors}${text}`;
   });
   closed = once(child, "close");
 

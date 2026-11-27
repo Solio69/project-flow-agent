@@ -461,6 +461,30 @@
     overflow-wrap: anywhere;
     cursor: pointer;
   }
+  #pfa-current-demo .pfa-task-label .pfa-title {
+    display: inline;
+    padding-inline: 0;
+  }
+  #pfa-current-demo .pfa-copy-tail {
+    display: inline-flex;
+    max-inline-size: 100%;
+    align-items: center;
+    gap: 3px;
+  }
+  #pfa-current-demo .pfa-copy-tail .pfa-title { min-inline-size: 0; }
+  #pfa-current-demo .pfa-copy-inline {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    inline-size: 25px;
+    block-size: 25px;
+    padding: 0;
+    vertical-align: middle;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--pfa-ui-accent);
+  }
   #pfa-current-demo .pfa-project-name { font-weight: 600; }
   #pfa-current-demo :is(.pfa-grip, .pfa-grip-space, .pfa-disclosure) { flex: none; width: var(--pfa-grip-width); }
   #pfa-current-demo :is(.pfa-grip, .pfa-disclosure) { min-height: 34px; padding: 0; background: none; border: 0; border-radius: 6px; color: var(--pfa-ui-accent); }
@@ -633,6 +657,7 @@
     #pfa-current-demo .pfa-calendar-day:hover { border-color: var(--pfa-ui-accent); }
     #pfa-current-demo .pfa-row:hover { background: var(--pfa-row-highlight); }
     #pfa-current-demo .pfa-title:hover { text-decoration-line: underline; }
+    #pfa-current-demo .pfa-copy-inline:hover { background: var(--pfa-control-hover); }
     #pfa-current-demo :is(.pfa-grip, .pfa-disclosure):hover { background: color-mix(in srgb, var(--pfa-row-accent, var(--pfa-project)) 28%, var(--pfa-surface)); }
   }
   @media (prefers-reduced-motion: no-preference) {
@@ -657,6 +682,11 @@
     #pfa-current-demo .pfa-disclosure { min-width: 44px; }
     #pfa-current-demo .pfa-period-trigger .pfa-period-clear { width: 44px; }
     #pfa-current-demo .pfa-calendar-day { min-height: 38px; }
+    #pfa-current-demo .pfa-copy-inline { inline-size: 44px; block-size: 44px; justify-items: start; }
+  }
+  @media (max-width: 360px) and (pointer: coarse) {
+    #pfa-current-demo .pfa-row { flex-wrap: wrap; }
+    #pfa-current-demo .pfa-row-actions { flex-basis: 100%; justify-content: flex-end; }
   }
 </style>
 
@@ -726,9 +756,9 @@
   const icon = (name, glyph) => `<span class="pfa-icon" aria-hidden="true"><i data-lucide="${name}"></i><span>${glyph}</span></span>`;
   const paintIcons = () => globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
   const projectFor = id => projects.find(project => project.id === id);
-  const calendarDate = value => new Date(value + "T00:00:00Z");
+  const calendarDate = value => new Date(`${value}T00:00:00Z`);
   const dateKey = (year, month, day) => new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
-  const monthStart = value => value.slice(0, 7) + "-01";
+  const monthStart = value => `${value.slice(0, 7)}-01`;
   const shortDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
   const shortMonthDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", timeZone: "UTC" });
   const numericDate = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
@@ -774,6 +804,9 @@
   function taskRow(group, id, canReorder) {
     const task = state.tasks[id];
     const title = html(task.title);
+    const lastWord = Math.max(0, task.title.search(/\S+$/));
+    const titleStart = html(task.title.slice(0, lastWord));
+    const titleEnd = html(task.title.slice(lastWord));
     const project = projectFor(task.project);
     const today = group === "today";
     const moveLabel = today ? "Вернуть в список проекта" : "Добавить в «Сегодня»";
@@ -787,7 +820,12 @@
       ${today ? projectEmoji(project) : ""}
       <div class="pfa-task-label">
         <span class="pfa-title">
-          ${today ? `<span class="pfa-project-name">${html(project.name)}:</span> ` : ""}<span class="pfa-task-text">${title}</span>
+          ${today ? `<span class="pfa-project-name">${html(project.name)}:</span> ` : ""}<span class="pfa-task-text">${titleStart}</span></span><span class="pfa-copy-tail">
+          <span class="pfa-title pfa-task-text">${titleEnd}</span>
+          <button type="button" class="pfa-copy-inline cursor-interaction"
+            data-action="copy-path" data-tooltip="Скопировать путь к заметке" aria-label="Скопировать путь к заметке: ${title}">
+            ${icon("copy", "⧉")}
+          </button>
         </span>
       </div>
       <div class="pfa-row-actions">
@@ -881,7 +919,7 @@
     if (same) return;
     const { group, id } = trigger.dataset;
     const popup = document.createElement("div");
-    popup.className = "pfa-menu " + (order ? "for-grip" : "for-actions");
+    popup.className = `pfa-menu ${order ? "for-grip" : "for-actions"}`;
     popup.setAttribute("role", "group");
     popup.setAttribute("aria-label", trigger.getAttribute("aria-label"));
     if (order) {
@@ -892,6 +930,7 @@
     } else {
       const canTransfer = state.projectOrder.some(project => project !== state.tasks[id].project);
       popup.innerHTML = `<button class="cursor-interaction" type="button" data-action="rename">${icon("pencil", "✎")}Переименовать</button>
+        <button class="cursor-interaction" type="button" data-action="duplicate">${icon("copy-plus", "⊞")}Дублировать задачу</button>
         <button class="cursor-interaction" type="button" data-action="move-project" aria-haspopup="dialog" ${canTransfer ? "" : "disabled"}>${icon("folder-input", "↪")}Перенести в другой проект</button>
         <button class="cursor-interaction" type="button" data-action="queue">${icon("inbox", "▤")}<span>Убрать из текущих задач<small>Задача вернётся в очередь проекта</small></span></button>
         <button class="cursor-interaction" type="button" data-action="archive">${icon("trash-2", "×")}<span>Удалить задачу<small>Файл переместится в архив</small></span></button>`;
@@ -1071,6 +1110,28 @@
     state.lists[group] = state.lists[group].filter(item => item !== id);
   }
 
+  function duplicateTask(group, id) {
+    const task = state.tasks[id];
+    const items = state.lists[group];
+    const position = items.indexOf(id);
+    if (position < 0) return;
+
+    const names = new Set(Object.values(state.tasks)
+      .filter(item => item.project === task.project)
+      .map(item => item.title.toLowerCase()));
+    const base = task.title.replace(/ \(копия(?: \d+)?\)$/u, "");
+    let title = `${base} (копия)`;
+    for (let number = 2; names.has(title.toLowerCase()); number++) {
+      title = `${base} (копия ${number})`;
+    }
+
+    const copy = state.nextId++;
+    state.tasks[copy] = { ...task, title, done: false };
+    items.splice(position + 1, 0, copy);
+    update("Копия задачи создана");
+    lists.querySelector(`[data-action="menu"][data-id="${copy}"]`)?.focus({ preventScroll: true });
+  }
+
   function transferTask(group, id, source) {
     const task = state.tasks[id];
     const current = projectFor(task.project);
@@ -1201,6 +1262,8 @@
       case "history": sendToHistory(control); break;
       case "close": dialog.close(); break;
       case "rename": namedTask(state.tasks[selectedId].project, selectedId, currentMenu.trigger); break;
+      case "copy-path": flash("Путь к заметке скопирован"); break;
+      case "duplicate": duplicateTask(currentMenu.group, selectedId); break;
       case "move-project": transferTask(currentMenu.group, selectedId, currentMenu.trigger); break;
       case "queue":
         removeFrom(currentMenu.group, selectedId);

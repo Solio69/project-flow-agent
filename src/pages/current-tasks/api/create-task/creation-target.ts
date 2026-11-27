@@ -1,4 +1,4 @@
-import type { App, TFile, TFolder } from "obsidian";
+import type { App, TFile, TFolder, Vault } from "obsidian";
 import { VAULT_PATH_SEPARATOR } from "../../../../shared/lib/note-path";
 import { taskFilename, type CreateTaskRequest } from "../../model/task-create";
 import { resolveProjectInbox } from "../resolve-project-folder";
@@ -21,6 +21,13 @@ export function resolveCreationTarget(
 ): CreationTarget {
   const filename = taskFilename(title);
   const { inbox, inboxPath, project, source, assertCurrent } = resolveProjectInbox(app, snapshot, projectPath);
-  const path = inboxPath + VAULT_PATH_SEPARATOR + filename;
+  const path = `${inboxPath}${VAULT_PATH_SEPARATOR}${filename}`;
   return { filename, inbox, path, project, source, assertCurrent };
+}
+
+export async function isTaskFilenameOccupied(vault: Vault, inbox: TFolder, filename: string, path: string) {
+  const filenameKey = filename.toLowerCase();
+  const { children } = inbox;
+  if (vault.getAbstractFileByPath(path) || children.some(({ name }) => name.toLowerCase() === filenameKey)) return true;
+  return vault.adapter.exists(path, false);
 }

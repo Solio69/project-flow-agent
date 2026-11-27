@@ -11,7 +11,7 @@ export function describeTaskProjects(groups: LinkedTaskGroup[], taskPath: string
     const folder = notePath && vaultParentPath(notePath);
     return !isTodayGroup(group) && notePath && folder ? [{ path: notePath, title, emoji, folder }] : [];
   });
-  const ownership = projects.filter(({ folder }) => taskPath.startsWith(folder + VAULT_PATH_SEPARATOR));
+  const ownership = projects.filter(({ folder }) => taskPath.startsWith(`${folder}${VAULT_PATH_SEPARATOR}`));
   const [owner, ambiguousOwner] = ownership;
   if (!owner || ambiguousOwner) return;
   const destinations = projects.filter(({ folder }) => folder !== owner.folder &&

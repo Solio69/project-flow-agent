@@ -22,8 +22,8 @@ export function rewriteTaskLink(markdown: string, { line, link }: TaskRow, path:
   const [target] = content.split(WIKI_LINK_ALIAS_SEPARATOR, 1);
   if (target.trim() !== link) throw new TaskEditError(conflict);
   const fragmentPosition = link.indexOf(LINK_FRAGMENT_PREFIX);
-  const address = fragmentPosition === -1 ? path : path + link.slice(fragmentPosition);
+  const address = fragmentPosition === -1 ? path : `${path}${link.slice(fragmentPosition)}`;
   const updated = content.replace(link, () => address);
-  parts[index] = row.replace(raw, () => openLink + updated + closeLink);
+  parts[index] = row.replace(raw, () => `${openLink}${updated}${closeLink}`);
   return { markdown: parts.join(EMPTY_STRING), task: { line, link: address } };
 }

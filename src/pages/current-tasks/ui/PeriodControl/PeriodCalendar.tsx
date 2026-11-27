@@ -31,7 +31,7 @@ export function PeriodCalendar({
   const today = localToday();
   const viewedDate = new Date(date);
   const month = viewedDate.getUTCMonth();
-  const heading = MONTH_NAME.format(viewedDate) + SPACE + viewedDate.getUTCFullYear();
+  const heading = `${MONTH_NAME.format(viewedDate)}${SPACE}${viewedDate.getUTCFullYear()}`;
   const days = calendarDays(date);
   const previousMonth = shiftCalendarMonth(date, -1);
   const nextMonth = shiftCalendarMonth(date, 1);

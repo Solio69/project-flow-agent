@@ -45,7 +45,7 @@ export function PeriodControl({ period, isPeriodEditable, onChangePeriod, period
   const isDisabled = isSaving || !onChangePeriod;
   const emptyLabel = isPeriodEditable ? choose : noPeriod;
   const text = period ? periodText(period, { isCompact: isPeriodEditable }) : emptyLabel;
-  const label = periodLabel + LABEL_SEPARATOR + text;
+  const label = `${periodLabel}${LABEL_SEPARATOR}${text}`;
   const triggerLabel = period ? periodText(period) : choose;
   const error = message && !isOpen ? <p role={ALERT_ROLE} className="pfa-period-error">{message}</p> : null;
 

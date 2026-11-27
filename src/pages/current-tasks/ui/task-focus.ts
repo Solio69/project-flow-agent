@@ -10,12 +10,12 @@ export function canRestoreTaskFocus(control: HTMLElement) {
   return activeElement === control || activeElement === body;
 }
 
-export function focusTaskControl(control?: HTMLInputElement | HTMLButtonElement | null) {
-  return !control?.disabled && focusTaskElement(control);
+export function focusTaskControl(control?: HTMLInputElement | HTMLButtonElement | null, options?: FocusOptions) {
+  return !control?.disabled && focusTaskElement(control, options);
 }
 
-export function focusTaskElement(element?: HTMLElement | null) {
+export function focusTaskElement(element?: HTMLElement | null, options?: FocusOptions) {
   if (!element?.isConnected || element.closest(HIDDEN_SELECTOR)) return false;
-  element.focus();
+  element.focus(options);
   return hasTaskControlFocus(element);
 }

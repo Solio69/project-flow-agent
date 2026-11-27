@@ -22,11 +22,11 @@ export const TRAILING_HEADING_MARKERS_PATTERN = /[ \t]+#+[ \t]*$/;
 export const HORIZONTAL_RULE_PATTERN = /^(?:-{3,}|\*{3,}|_{3,})$/;
 const WIKI_LINK_PATTERN = /\[\[([^[\]]+)\]\]/;
 export const TASK_LINKS_PATTERN = new RegExp(WIKI_LINK_PATTERN.source, "g");
-export const PROJECT_LINK_PATTERN = new RegExp("^" + WIKI_LINK_PATTERN.source + "$");
+export const PROJECT_LINK_PATTERN = new RegExp(`^${WIKI_LINK_PATTERN.source}$`);
 export const DIAGNOSTIC_COPY = {
   unclosedFrontmatter: "Блок свойств не закрыт.",
   duplicatePeriodField: "Свойство периода повторяется.",
-  invalidPeriodDate: (label: string) => "Не удалось прочитать " + label + " периода.",
+  invalidPeriodDate: (label: string) => `Не удалось прочитать ${label} периода.`,
   reversedPeriod: "Дата окончания раньше даты начала периода.",
   missingLegacyDates: "Ожидались две даты в строке «Период планирования».",
   invalidTask: "Строка не похожа на задачу с галочкой.",

@@ -12,7 +12,7 @@ export function NoteLink({ note, onOpenNote, draggable }: {
   const { title, link, notePath } = note;
   if (!link || !notePath) return title;
 
-  const href = LINK_FRAGMENT_PREFIX + encodeURIComponent(link);
+  const href = `${LINK_FRAGMENT_PREFIX}${encodeURIComponent(link)}`;
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     const { ctrlKey, metaKey } = event;

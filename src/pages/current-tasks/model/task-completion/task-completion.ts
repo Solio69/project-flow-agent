@@ -43,7 +43,7 @@ export function updateCompletionMark(markdown: string, target: TaskRow, complete
   const orderedLines = [...active, target, ...done].map((task) => task.line);
   const markIndex = row.indexOf(CHECKBOX_START) + CHECKBOX_START.length;
   const mark = completed ? CHECKED_MARK : UNCHECKED_MARK;
-  parts[rowIndex] = row.slice(0, markIndex) + mark + row.slice(markIndex + mark.length);
+  parts[rowIndex] = `${row.slice(0, markIndex)}${mark}${row.slice(markIndex + mark.length)}`;
 
   return arrangeTaskRows(parts, group, orderedLines);
 }

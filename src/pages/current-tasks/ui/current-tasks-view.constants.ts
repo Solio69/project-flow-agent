@@ -1,13 +1,15 @@
 import { CURRENT_TASKS_FILENAME } from "../model/current-tasks.constants";
 
 export const ERROR_COPY = {
+  copyPathLog: "Project Flow Agent: копирование пути к заметке",
+  duplicateLog: "Project Flow Agent: дублирование задачи",
   periodLog: "Project Flow Agent: изменение дат периода",
   createLog: "Project Flow Agent: создание задачи",
   renameLog: "Project Flow Agent: переименование задачи",
   transferLog: "Project Flow Agent: перенос задачи в другой проект",
   archiveLog: "Project Flow Agent: архивирование задачи",
-  sourceMissing: "Заметка «" + CURRENT_TASKS_FILENAME + "» не найдена в этом хранилище.",
-  sourceUnreadable: "Не удалось прочитать «" + CURRENT_TASKS_FILENAME + "».",
+  sourceMissing: `Заметка «${CURRENT_TASKS_FILENAME}» не найдена в этом хранилище.`,
+  sourceUnreadable: `Не удалось прочитать «${CURRENT_TASKS_FILENAME}».`,
   noteOpenFailed: "Не удалось открыть связанную заметку.",
   readLog: "Project Flow Agent: чтение текущих задач",
   openLog: "Project Flow Agent: открытие связанной заметки",

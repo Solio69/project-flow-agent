@@ -30,7 +30,7 @@ export const renameTaskCase = {
   newTitle: renamedDraftTitle,
   caseOnlyTitle: "черновик",
   invalidTitle: "Черновик: правки",
-  body: taskNoteMarkdown + "\nРабочий текст задачи\n",
+  body: `${taskNoteMarkdown}\nРабочий текст задачи\n`,
   action: /<button(?=[^>]*aria-label="Действия: Черновик")(?![^>]*disabled="")[^>]*>/,
   invalid: /недопустим/,
   occupied: /уже есть файл/,
@@ -168,6 +168,15 @@ export const projectLinkCase = {
 
 const buildScript = "esbuild.config.mjs";
 const manifestFile = "manifest.json";
+
+export const notePathCopy = {
+  root: "D:\\Тестовое хранилище\\Проекты",
+  absolute: "D:\\Тестовое хранилище\\Проекты\\Мастерская\\project inbox\\Черновик.md",
+  attachment: "Мастерская/project inbox/Файл.pdf",
+  copied: /скопирован/i,
+  inaccessible: /изменился или недоступен/i,
+  unsupported: /Markdown-заметке/u,
+};
 
 export const watchFixture = {
   buildScript,
