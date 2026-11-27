@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import {
-  ALERT_ROLE, ARIA_CURRENT_DATE, BUTTON_TYPE, DIALOG_POPUP, GROUP_ROLE, OMIT_FROM_TAB_ORDER, POLITE_LIVE, TRUE_STRING,
+  ALERT_ROLE, ARIA_CURRENT_DATE, BUTTON_TYPE, DIALOG_POPUP, FOCUS_WITHOUT_SCROLL, GROUP_ROLE, OMIT_FROM_TAB_ORDER,
+  POLITE_LIVE, TRUE_STRING,
 } from "../../../../shared/lib/dom";
 import { SPACE } from "../../../../shared/lib";
 import { ActionButton } from "../../../../shared/ui";
@@ -41,7 +42,7 @@ export function PeriodCalendar({
   const navigateNext = !isDisabled && nextMonth ? () => onNavigate(nextMonth, false) : undefined;
 
   useLayoutEffect(() => {
-    if (isDayFocusRequested) focusedDay.current?.focus({ preventScroll: true });
+    if (isDayFocusRequested) focusedDay.current?.focus(FOCUS_WITHOUT_SCROLL);
   }, [date, isDayFocusRequested]);
 
   function moveFocus(event: KeyboardEvent<HTMLDivElement>) {

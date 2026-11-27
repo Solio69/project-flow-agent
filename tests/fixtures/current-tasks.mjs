@@ -123,7 +123,7 @@ export async function createCurrentTasksFixture({ settings = {} } = {}) {
   }
 
   class ItemView {
-    contentEl = {};
+    contentEl = { ownerDocument: { defaultView: null } };
     navigation = false;
 
     constructor(leaf) {

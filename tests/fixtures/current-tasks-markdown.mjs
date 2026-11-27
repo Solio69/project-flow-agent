@@ -133,6 +133,7 @@ export const aliasedBlogTasks = `${completionHeader}${[
   "- [ ] [[Блог/Черновик блога]]",
   "## [[Блог/Блог|Контент]]",
 ].join("\r\n")}`;
+export const repeatedBlogPanels = `${aliasedBlogTasks}\r\n## [[Блог/Блог|Редакция]]`;
 
 const blogHeading = "## [[Блог/Блог|Контент]]";
 const activeBlogRow = "- [ ] [[Блог/Черновик блога]]";

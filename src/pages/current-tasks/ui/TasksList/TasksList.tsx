@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type RefObject } from "react";
 import { SPACE } from "../../../../shared/lib";
+import { FOCUS_WITHOUT_SCROLL } from "../../../../shared/lib/dom";
 import type { RequestCreateTask } from "../dialogs/CreateTaskDialog";
 import type { OpenNote } from "../NoteLink";
 import type { RequestRenameTask } from "../dialogs/RenameTaskDialog";
@@ -25,6 +26,7 @@ import type { CopyTaskPath } from "../../model/task-note-path";
 import type { ChangePeriod } from "../../model/task-period";
 import type { ReorderTask } from "../../model/task-reorder";
 import type { TransferReceipt } from "../../model/task-transfer";
+import type { SetCompletedVisible, SetProjectsCollapsed } from "../../model/view-preferences";
 import type { RequestTransferTask } from "../dialogs/TaskTransferDialog";
 import type { RequestArchiveTask } from "../dialogs/TaskArchiveDialog";
 import type { ActionDiagnostic } from "../../model/types";
@@ -32,15 +34,37 @@ import {
   COPY,
   DIAGNOSTIC_LABEL_SUFFIX,
   EMPTY_TODAY,
-  MOVE_FOCUS_OPTIONS,
   TASK_MOVE_CONTROL_SELECTOR,
 } from "./constants";
 
 const { diagnosticsTitle, lineLabel } = COPY;
 
-type Panel = { group: LinkedTaskGroup; isToday: boolean };
+type Panel = { group: LinkedTaskGroup; isToday: boolean; key: string };
 type MoveOrigin = { panel: HTMLElement; nearbyRows: (Element | null | undefined)[] };
 type MoveFocus = { control: HTMLButtonElement; notePath: string; origin?: MoveOrigin };
+
+function collectPanels(groups: readonly LinkedTaskGroup[]) {
+  const todayPanels: Panel[] = [];
+  const projectPanels: Panel[] = [];
+  const occurrences = new Map<string, number>();
+
+  for (const group of groups) {
+    const { kind, notePath, link, title } = group;
+    const isToday = isTodayGroup(group);
+    const identity = notePath ?? link ?? title;
+    const occurrenceKey = `${kind}${LIST_KEY_SEPARATOR}${identity}`;
+    const occurrence = occurrences.get(occurrenceKey) ?? 0;
+    occurrences.set(occurrenceKey, occurrence + 1);
+
+    const key = occurrence ? JSON.stringify([identity, occurrence]) : identity;
+    const panels = isToday ? todayPanels : projectPanels;
+    panels.push({ group, isToday, key });
+  }
+  if (!todayPanels.length)
+    todayPanels.push({ group: EMPTY_TODAY, isToday: true, key: EMPTY_TODAY.title });
+
+  return { todayPanels, projectPanels };
+}
 
 function projectMoveOrigin(control: HTMLButtonElement): MoveOrigin | undefined {
   const panel = control.closest<HTMLElement>(TASK_PANEL_SELECTOR);
@@ -51,13 +75,13 @@ function projectMoveOrigin(control: HTMLButtonElement): MoveOrigin | undefined {
 }
 
 function focusMoveOrigin(control: HTMLButtonElement, { panel, nearbyRows }: MoveOrigin) {
-  if (focusTaskControl(control, MOVE_FOCUS_OPTIONS)) return;
+  if (focusTaskControl(control, FOCUS_WITHOUT_SCROLL)) return;
   for (const row of nearbyRows) {
     const arrow = row?.querySelector<HTMLButtonElement>(TASK_MOVE_CONTROL_SELECTOR);
-    if (focusTaskControl(arrow, MOVE_FOCUS_OPTIONS)) return;
+    if (focusTaskControl(arrow, FOCUS_WITHOUT_SCROLL)) return;
   }
   const disclosure = panel.querySelector<HTMLButtonElement>(PANEL_DISCLOSURE_SELECTOR);
-  focusTaskControl(disclosure, MOVE_FOCUS_OPTIONS);
+  focusTaskControl(disclosure, FOCUS_WITHOUT_SCROLL);
 }
 
 function renderDiagnostic({ line, message }: ActionDiagnostic) {
@@ -73,8 +97,11 @@ function renderDiagnostic({ line, message }: ActionDiagnostic) {
 
 export function TasksList({
   document,
+  panelsRef,
   showCompleted: isCompletedVisible,
   onShowCompletedChange,
+  collapsedProjects,
+  onProjectsCollapsed,
   onChangePeriod,
   onOpenNote,
   onSetCompleted,
@@ -89,8 +116,11 @@ export function TasksList({
   lastTransfer,
 }: {
   document: TasksSnapshot;
+  panelsRef: RefObject<HTMLDivElement | null>;
   showCompleted: boolean;
-  onShowCompletedChange: (visible: boolean) => void;
+  onShowCompletedChange: SetCompletedVisible;
+  collapsedProjects: ReadonlySet<string>;
+  onProjectsCollapsed: SetProjectsCollapsed;
   onChangePeriod?: ChangePeriod;
   onOpenNote: OpenNote;
   onSetCompleted?: SetCompleted;
@@ -106,20 +136,30 @@ export function TasksList({
 }) {
   const { period, isPeriodEditable, groups, diagnostics } = document;
   const completedToggleRef = useRef<HTMLButtonElement>(null);
-  const panelsRef = useRef<HTMLDivElement>(null);
   const moveFocus = useRef<MoveFocus | null>(null);
+  const revealedTransfer = useRef<TransferReceipt | undefined>(undefined);
   const diagnosticCount = diagnostics.length;
   const isDiagnosticListVisible = diagnosticCount > 0;
-  const todayPanels: Panel[] = [];
-  const projectPanels: Panel[] = [];
-  for (const group of groups) {
-    const isToday = isTodayGroup(group);
-    const destination = isToday ? todayPanels : projectPanels;
-    destination.push({ group, isToday });
-  }
-  if (!todayPanels.length)
-    todayPanels.push({ group: EMPTY_TODAY, isToday: true });
+  const { todayPanels, projectPanels } = collectPanels(groups);
   const panels = [...todayPanels, ...projectPanels];
+  const projectKeys = projectPanels.map(({ key }) => key);
+  const isAnyProjectExpanded = projectKeys.some((key) => !collapsedProjects.has(key));
+  const toggleProjects = projectKeys.length
+    ? () => void onProjectsCollapsed(projectKeys, isAnyProjectExpanded)
+    : undefined;
+
+  useLayoutEffect(() => {
+    if (!lastTransfer || revealedTransfer.current === lastTransfer) return;
+    const { projectPath, taskPath } = lastTransfer;
+    const destination = projectPanels.find(({ group: { notePath, tasks } }) => {
+      if (notePath !== projectPath) return false;
+      return tasks.some(({ notePath: currentPath }) => currentPath === taskPath);
+    });
+    if (!destination) return;
+    revealedTransfer.current = lastTransfer;
+    const { key } = destination;
+    void onProjectsCollapsed([key], false);
+  }, [projectPanels, lastTransfer, onProjectsCollapsed]);
 
   const moveFromButton: TaskFromButton | undefined = onMoveTask
     ? (task, control) => {
@@ -176,18 +216,17 @@ export function TasksList({
   }
 
   function renderPanels() {
-    const occurrences = new Map<string, number>();
-    return panels.map(({ group, isToday }) => {
-      const { kind, link, title } = group;
-      const identity = `${kind}${LIST_KEY_SEPARATOR}${link ?? title}`;
-      const occurrence = occurrences.get(identity) ?? 0;
-      occurrences.set(identity, occurrence + 1);
-      const key = `${identity}${LIST_KEY_SEPARATOR}${occurrence}`;
+    return panels.map(({ group, isToday, key }) => {
+      const { kind } = group;
+      const reactKey = `${kind}${LIST_KEY_SEPARATOR}${key}`;
+      const isExpanded = isToday || !collapsedProjects.has(key);
       return (
         <TaskPanel
-          key={key}
+          key={reactKey}
           group={group}
           today={isToday}
+          isExpanded={isExpanded}
+          onToggleProject={() => void onProjectsCollapsed([key], isExpanded)}
           showCompleted={isCompletedVisible}
           focusCompletedToggle={focusCompletedToggle}
           onOpenNote={onOpenNote}
@@ -201,7 +240,6 @@ export function TasksList({
           onRequestDuplicateTask={onRequestDuplicateTask}
           onCopyTaskPath={onCopyTaskPath}
           projectGroups={groups}
-          lastTransfer={lastTransfer}
         />
       );
     });
@@ -217,6 +255,8 @@ export function TasksList({
         showCompleted={isCompletedVisible}
         onShowCompletedChange={onShowCompletedChange}
         completedToggleRef={completedToggleRef}
+        isAnyProjectExpanded={isAnyProjectExpanded}
+        onToggleProjects={toggleProjects}
       />
       {isDiagnosticListVisible && renderDiagnostics()}
       <div className="pfa-task-panels" ref={panelsRef}>

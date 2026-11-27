@@ -2,7 +2,6 @@ import {
   useId,
   useLayoutEffect,
   useRef,
-  useState,
   type MouseEventHandler,
 } from "react";
 import {
@@ -35,7 +34,6 @@ import {
 import type { ReorderTask } from "../../model/task-reorder";
 import { describeTaskProjects } from "../../model/task-projects";
 import type { CopyTaskPath } from "../../model/task-note-path";
-import type { TransferReceipt } from "../../model/task-transfer";
 import {
   COPY,
   ENABLED_TASK_CONTROL,
@@ -69,6 +67,8 @@ function enabledTaskControls(
 export function TaskPanel({
   group,
   today: isToday,
+  isExpanded,
+  onToggleProject,
   showCompleted: isCompletedVisible,
   focusCompletedToggle,
   onOpenNote,
@@ -82,10 +82,11 @@ export function TaskPanel({
   onRequestDuplicateTask,
   onCopyTaskPath,
   projectGroups,
-  lastTransfer,
 }: {
   group: LinkedTaskGroup;
   today: boolean;
+  isExpanded: boolean;
+  onToggleProject: () => void;
   showCompleted: boolean;
   focusCompletedToggle: () => void;
   onOpenNote: OpenNote;
@@ -99,11 +100,9 @@ export function TaskPanel({
   onRequestDuplicateTask?: TaskFromButton;
   onCopyTaskPath?: CopyTaskPath;
   projectGroups: LinkedTaskGroup[];
-  lastTransfer?: TransferReceipt;
 }) {
   const { kind, title, tasks, notePath, link, projectEmoji } = group;
   const { active, completed } = partitionTasksByCompletion(tasks);
-  const [isExpanded, setIsExpanded] = useState(true);
   const isGripAvailable = active.length >= MIN_TASKS_FOR_GRIP;
   const reorderTask = isGripAvailable ? onReorderTask : undefined;
   const {
@@ -139,17 +138,6 @@ export function TaskPanel({
       : undefined;
   const archiveLabel = `${archive}${quotedTitle}`;
   const taskOccurrences = new Map<string, number>();
-  const revealTransfer =
-    lastTransfer &&
-    lastTransfer.projectPath === notePath &&
-    tasks.some(({ notePath: path }) => path === lastTransfer.taskPath)
-      ? lastTransfer
-      : undefined;
-
-  useLayoutEffect(() => {
-    if (revealTransfer) setIsExpanded(true);
-  }, [revealTransfer]);
-
   function rememberCompletionFocus(control: HTMLInputElement) {
     if (isCompletedVisible || !hasTaskControlFocus(control)) return;
     const position = enabledTaskControls(listRef.current).indexOf(control);
@@ -292,7 +280,7 @@ export function TaskPanel({
           aria-label={disclosure}
           aria-controls={listId}
           aria-expanded={isExpanded}
-          onClick={() => setIsExpanded((previous) => !previous)}
+          onClick={onToggleProject}
         >
           <Icon name={chevron} />
         </button>
