@@ -1,6 +1,8 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { EMPTY_STRING, LABEL_SEPARATOR } from "../../../../shared/lib";
-import { ALERT_ROLE, BUTTON_TYPE, DIALOG_POPUP, DOM_EVENT, KEYBOARD_KEY } from "../../../../shared/lib/dom";
+import {
+  ALERT_ROLE, BUTTON_TYPE, DIALOG_POPUP, DOM_EVENT, FOCUS_WITHOUT_SCROLL, KEYBOARD_KEY,
+} from "../../../../shared/lib/dom";
 import { CLOSE_ICON, Icon } from "../../../../shared/ui";
 import {
   localToday, PERIOD_WRITE_COPY, selectCalendarDate, type ChangePeriod, type DateSelection, type PeriodSource,
@@ -57,7 +59,7 @@ export function PeriodControl({ period, isPeriodEditable, onChangePeriod, period
     }
     if (isOpen || isDisabled || !isTriggerFocusRequested.current) return;
     isTriggerFocusRequested.current = false;
-    if (isPeriodFocusRestorable(control.current)) trigger.current?.focus({ preventScroll: true });
+    if (isPeriodFocusRestorable(control.current)) trigger.current?.focus(FOCUS_WITHOUT_SCROLL);
   }, [isDisabled, isOpen, isPeriodEditable]);
 
   useEffect(() => {

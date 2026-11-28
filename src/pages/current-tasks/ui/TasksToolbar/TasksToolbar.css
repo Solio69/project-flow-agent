@@ -5,7 +5,16 @@
   margin-block: 10px 16px;
 }
 
-.pfa-current-tasks .pfa-tasks-toolbar > :is(.pfa-control, .pfa-completed-toggle),
+.pfa-current-tasks .pfa-tasks-toolbar > .pfa-control,
+.pfa-current-tasks .pfa-period-control > .pfa-period-trigger,
+.pfa-current-tasks .pfa-period-control > .pfa-period,
+.pfa-current-tasks .pfa-toolbar-tools {
+  border: 1px solid color-mix(in srgb, var(--pfa-ui-accent) 50%, transparent);
+  border-radius: 10px;
+  background: var(--pfa-task-surface);
+}
+
+.pfa-current-tasks .pfa-tasks-toolbar > .pfa-control,
 .pfa-current-tasks .pfa-period-control > .pfa-period-trigger,
 .pfa-current-tasks .pfa-period-control > .pfa-period {
   display: inline-flex;
@@ -14,51 +23,50 @@
   padding: 6px 10px;
   align-items: center;
   gap: 6px;
-  border: 1px solid color-mix(in srgb, var(--pfa-ui-accent) 50%, transparent);
-  border-radius: 10px;
-  background: var(--pfa-task-surface);
   color: var(--pfa-ui-accent);
   font-size: 13px;
   font-weight: 600;
 }
 
-.pfa-current-tasks .pfa-completed-toggle {
-  min-inline-size: 0;
-  box-shadow: none;
-  cursor: pointer;
-}
-
-.pfa-current-tasks .pfa-switch-track {
-  position: relative;
+.pfa-current-tasks .pfa-toolbar-tools {
+  display: inline-flex;
   flex: none;
-  inline-size: 30px;
-  block-size: 17px;
-  border: 1px solid var(--pfa-ui-accent);
-  border-radius: 10px;
+  align-items: center;
+  align-self: center;
+  gap: 6px;
+  min-block-size: 38px;
+  margin-inline-start: auto;
+  padding: 3px;
 }
 
-.pfa-current-tasks .pfa-switch-track::after {
-  position: absolute;
-  inset-block-start: 2px;
-  inset-inline-start: 2px;
-  inline-size: 11px;
-  block-size: 11px;
-  border-radius: 50%;
-  background: var(--pfa-ui-accent);
-  content: "";
+.pfa-current-tasks .pfa-tool-button {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 29px;
+  block-size: 30px;
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--pfa-ui-accent);
 }
 
-.pfa-current-tasks .pfa-completed-toggle[data-show-completed="true"] .pfa-switch-track {
-  background: var(--pfa-ui-accent);
+.pfa-current-tasks .pfa-tool-button:is(:disabled, [aria-disabled="true"]) {
+  cursor: default;
+  opacity: .55;
 }
 
-.pfa-current-tasks .pfa-completed-toggle[data-show-completed="true"] .pfa-switch-track::after {
-  inset-inline-start: 15px;
-  background: var(--pfa-task-surface);
+@media (hover: hover) {
+  .pfa-current-tasks .pfa-tool-button:not(:disabled, [aria-disabled="true"]):hover {
+    background: var(--pfa-control-hover);
+  }
 }
 
-@media (forced-colors: active) {
-  .pfa-current-tasks .pfa-switch-track {
-    display: none;
+@media (pointer: coarse) {
+  .pfa-current-tasks .pfa-tool-button {
+    inline-size: var(--pfa-circle-size);
+    block-size: var(--pfa-circle-size);
   }
 }

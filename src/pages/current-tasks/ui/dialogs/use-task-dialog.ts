@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type MouseEvent, type RefObject, type SyntheticEvent } from "react";
+import { FOCUS_WITHOUT_SCROLL } from "../../../../shared/lib/dom";
 
 function isDialogBackdrop({ target, currentTarget, clientX, clientY }: MouseEvent<HTMLDialogElement>) {
   if (target !== currentTarget) return false;
@@ -21,7 +22,7 @@ export function useTaskDialog<Result, Element extends HTMLElement>(
       element.showModal();
       const { current: control } = initialFocus;
       if (control) {
-        control.focus({ preventScroll: true });
+        control.focus(FOCUS_WITHOUT_SCROLL);
         afterFocus?.(control);
       }
     }

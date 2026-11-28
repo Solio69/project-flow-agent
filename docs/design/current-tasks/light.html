@@ -14,7 +14,7 @@
 <section id="pfa-current-demo" lang="ru" aria-labelledby="pfa-heading">
   <div>
     <header class="pfa-page-header">
-      <h1 id="pfa-heading">Текущие задачи</h1>
+      <h1 id="pfa-heading" tabindex="-1">Текущие задачи</h1>
       <div class="pfa-toolbar">
         <div class="pfa-period-control" data-period-control>
           <div class="pfa-period-trigger">
@@ -54,15 +54,23 @@
           <span class="pfa-icon"><i data-lucide="archive" aria-hidden="true"></i><span aria-hidden="true">▤</span></span>
           Перенести выполненные в историю
         </button>
-        <label class="pfa-button pfa-completed-toggle cursor-interaction">
-          <input type="checkbox" role="switch" aria-label="Показывать выполненные" class="cursor-interaction" data-show-completed checked>
-          <span class="pfa-switch-track" aria-hidden="true"></span>
-          <span data-completed-label>Скрыть выполненные</span>
-        </label>
+        <div class="pfa-toolbar-tools" role="group" aria-label="Действия с экраном">
+          <button type="button" class="pfa-tool-button cursor-interaction" data-action="toggle-completed" aria-label="Скрыть выполненные" data-tooltip="Скрыть выполненные"></button>
+          <button type="button" class="pfa-tool-button cursor-interaction" data-action="fold-projects" aria-label="Свернуть все проекты" data-tooltip="Свернуть все проекты"></button>
+          <button type="button" class="pfa-tool-button cursor-interaction" aria-label="Статистика" data-tooltip="Статистика" aria-disabled="true">
+            <span class="pfa-icon" aria-hidden="true"><i data-lucide="chart-column"></i><span>▥</span></span>
+          </button>
+        </div>
       </div>
     </header>
     <div data-lists></div>
     <div class="pfa-status" data-status role="status" aria-live="polite"></div>
+    <div class="pfa-bottom-rail" hidden>
+      <button type="button" class="pfa-button pfa-circle pfa-back-to-top cursor-interaction"
+        data-action="back-to-top" aria-label="Наверх" data-tooltip="Наверх">
+        <span class="pfa-icon" aria-hidden="true"><i data-lucide="arrow-up-to-line"></i><span>↑</span></span>
+      </button>
+    </div>
   </div>
   <dialog class="pfa-dialog" aria-labelledby="pfa-dialog-title">
     <form novalidate>
@@ -117,10 +125,11 @@
     --pfa-circle-size: 34px;
     --pfa-panel-inset: 12px;
     --pfa-grip-width: 20px;
+    --pfa-page-inset: clamp(12px, 3vw, 24px);
     position: relative;
     box-sizing: border-box;
     width: 100%;
-    padding: clamp(12px, 3vw, 24px);
+    padding: var(--pfa-page-inset);
     border-radius: 20px;
     background: transparent;
     color: var(--pfa-text);
@@ -158,9 +167,29 @@
   #pfa-current-demo button { font: inherit; color: inherit; }
   #pfa-current-demo input { font: inherit; }
   #pfa-current-demo :is(button, input):focus-visible { outline: 2px solid var(--pfa-control-main); outline-offset: 2px; }
-  #pfa-current-demo :is(.pfa-toolbar .pfa-button, .pfa-circle, .pfa-grip, .pfa-disclosure):focus-visible { outline-color: var(--pfa-ui-accent); }
+  #pfa-current-demo :is(.pfa-toolbar .pfa-button, .pfa-tool-button, .pfa-circle, .pfa-grip, .pfa-disclosure):focus-visible { outline-color: var(--pfa-ui-accent); }
   #pfa-current-demo :is(.pfa-dialog button, .pfa-menu button):focus-visible { outline-color: var(--pfa-ui-accent); outline-offset: 1px; }
   #pfa-current-demo .pfa-page-header { margin-bottom: 16px; }
+  #pfa-current-demo .pfa-bottom-rail {
+    position: sticky;
+    z-index: 2;
+    inset-block-end: 0;
+    display: flex;
+    justify-content: center;
+    margin-block-end: calc(0px - var(--pfa-page-inset));
+    padding-block: 6px 10px;
+    pointer-events: none;
+  }
+  #pfa-current-demo .pfa-bottom-rail .pfa-back-to-top {
+    border-color: var(--pfa-control-border);
+    background: transparent;
+    color: var(--pfa-text);
+    pointer-events: auto;
+  }
+  #pfa-current-demo .pfa-back-to-top .pfa-icon:not(:has(svg)) > span {
+    border-block-start: 1px solid currentColor;
+    inline-size: 12px;
+  }
   #pfa-current-demo .pfa-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   #pfa-current-demo .pfa-button {
     display: inline-flex;
@@ -178,52 +207,48 @@
     font-size: 13px;
     font-weight: 500;
   }
-  #pfa-current-demo :is(.pfa-history, .pfa-period-trigger .pfa-button, .pfa-completed-toggle) {
+  #pfa-current-demo :is(.pfa-history, .pfa-period-trigger .pfa-button) {
     min-height: 38px;
     color: var(--pfa-ui-accent);
     font-weight: 600;
   }
-  #pfa-current-demo :is(.pfa-history, .pfa-period-trigger, .pfa-completed-toggle) {
+  #pfa-current-demo :is(.pfa-history, .pfa-period-trigger) {
     border-color: color-mix(in srgb, var(--pfa-ui-accent) 50%, transparent);
     background: var(--pfa-task-surface);
   }
-  #pfa-current-demo .pfa-completed-toggle { position: relative; gap: 4px; padding-inline: 7px; }
-  #pfa-current-demo .pfa-completed-toggle input {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    opacity: 0;
-  }
-  #pfa-current-demo .pfa-completed-toggle:has(input:focus-visible) {
-    outline: 2px solid var(--pfa-ui-accent);
-    outline-offset: 2px;
-  }
-  #pfa-current-demo .pfa-switch-track {
-    position: relative;
+  #pfa-current-demo .pfa-toolbar-tools {
+    display: inline-flex;
     flex: none;
-    width: 28px;
-    height: 16px;
-    border: 1px solid var(--pfa-control-border-hover);
-    border-radius: 999px;
-  }
-  #pfa-current-demo .pfa-switch-track::after {
-    content: "";
-    position: absolute;
-    inset: 2px auto auto 2px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--pfa-ui-accent);
-  }
-  #pfa-current-demo .pfa-completed-toggle input:checked + .pfa-switch-track {
-    border-color: var(--pfa-ui-accent);
-    background: var(--pfa-ui-accent);
-  }
-  #pfa-current-demo .pfa-completed-toggle input:checked + .pfa-switch-track::after {
-    transform: translateX(12px);
+    align-items: center;
+    align-self: center;
+    gap: 6px;
+    min-block-size: 38px;
+    margin-inline-start: auto;
+    padding: 3px;
+    border: 1px solid color-mix(in srgb, var(--pfa-ui-accent) 50%, transparent);
+    border-radius: 10px;
     background: var(--pfa-task-surface);
+  }
+  #pfa-current-demo .pfa-tool-button {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 29px;
+    block-size: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--pfa-ui-accent);
+  }
+  #pfa-current-demo .pfa-tool-button:is(:disabled, [aria-disabled="true"]) {
+    cursor: default;
+    opacity: .55;
+  }
+  @media (hover: hover) {
+    #pfa-current-demo .pfa-tool-button:not(:disabled, [aria-disabled="true"]):hover { background: var(--pfa-control-hover); }
+  }
+  @media (pointer: coarse) {
+    #pfa-current-demo .pfa-tool-button { inline-size: 44px; block-size: 44px; }
   }
   #pfa-current-demo .pfa-primary {
     --pfa-confirm-tint: var(--pfa-ui-accent);
@@ -534,7 +559,7 @@
   #pfa-current-demo .pfa-status:not(:empty) {
     position: sticky;
     z-index: 4;
-    bottom: 8px;
+    bottom: calc(var(--pfa-circle-size) + 18px);
     width: fit-content;
     max-width: 100%;
     margin: 8px auto 0;
@@ -641,7 +666,7 @@
   @media (hover: hover) {
     #pfa-current-demo .pfa-button:hover, #pfa-current-demo .pfa-menu button:not(:disabled):hover { background: var(--pfa-control-hover); }
     #pfa-current-demo .pfa-circle:hover { border-color: var(--pfa-control-border-hover); }
-    #pfa-current-demo :is(.pfa-history, .pfa-period-trigger, .pfa-completed-toggle):hover {
+    #pfa-current-demo :is(.pfa-history, .pfa-period-trigger):hover {
       background: var(--pfa-task-surface);
       border-color: var(--pfa-ui-accent);
     }
@@ -676,7 +701,7 @@
   }
   @media (pointer: coarse) {
     #pfa-current-demo { --pfa-circle-size: 44px; --pfa-grip-width: 28px; }
-    #pfa-current-demo .pfa-button, #pfa-current-demo :is(.pfa-history, .pfa-period-trigger .pfa-button, .pfa-completed-toggle), #pfa-current-demo .pfa-menu button { min-height: 44px; }
+    #pfa-current-demo .pfa-button, #pfa-current-demo :is(.pfa-history, .pfa-period-trigger .pfa-button), #pfa-current-demo .pfa-menu button { min-height: 44px; }
     #pfa-current-demo .pfa-checkbox { width: 40px; height: 44px; }
     #pfa-current-demo :is(.pfa-grip, .pfa-disclosure) { min-height: 44px; }
     #pfa-current-demo .pfa-disclosure { min-width: 44px; }
@@ -692,7 +717,36 @@
 
 <script>
 (() => {
+  const VIEW_ACTION = {
+    toggleCompleted: "toggle-completed",
+    foldProjects: "fold-projects",
+    backToTop: "back-to-top"
+  };
+  const COMPLETED_ICONS = {
+    shown: { name: "eye-off", fallback: "⊘", label: "Скрыть выполненные" },
+    hidden: { name: "eye", fallback: "◉", label: "Показать выполненные" }
+  };
+  const PROJECT_ICONS = {
+    expanded: { name: "chevrons-down-up", fallback: "⇅", label: "Свернуть все проекты" },
+    collapsed: { name: "chevrons-up-down", fallback: "↕", label: "Развернуть все проекты" }
+  };
+  const TOP_SCROLL_OFFSET = 0;
+  const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+  const SCROLL_EVENT = "scroll";
+  const SCROLL_BEHAVIOR = { instant: "instant", smooth: "smooth" };
+  const PASSIVE_SCROLL = { passive: true };
+  const FOCUS_WITHOUT_SCROLL = { preventScroll: true };
+  const ACCESSIBLE_LABEL = "aria-label";
+  const TOOLTIP = "data-tooltip";
+  const { toggleCompleted, foldProjects: foldProjectsAction, backToTop } = VIEW_ACTION;
+  const { shown, hidden } = COMPLETED_ICONS;
+  const { expanded, collapsed } = PROJECT_ICONS;
+  const { instant, smooth } = SCROLL_BEHAVIOR;
+
   const root = document.getElementById("pfa-current-demo");
+  const heading = root.querySelector("#pfa-heading");
+  const bottomRail = root.querySelector(".pfa-bottom-rail");
+  const buttonForAction = action => root.querySelector(`button[data-action="${action}"]`);
   const periodControl = root.querySelector("[data-period-control]");
   const periodTrigger = periodControl.querySelector("[data-action='period']");
   const periodClear = periodControl.querySelector("[data-action='clear-period']");
@@ -701,8 +755,8 @@
   const calendarDays = periodPicker.querySelector("[data-calendar-days]");
   const calendarSelection = periodPicker.querySelector("[data-calendar-selection]");
   const periodApply = periodPicker.querySelector("[data-action='apply-period']");
-  const completedToggle = root.querySelector("[data-show-completed]");
-  const completedLabel = root.querySelector("[data-completed-label]");
+  const completedToggle = buttonForAction(toggleCompleted);
+  const foldProjects = buttonForAction(foldProjectsAction);
   const lists = root.querySelector("[data-lists]");
   const dialog = root.querySelector("dialog");
   const form = dialog.querySelector("form");
@@ -880,10 +934,9 @@
 
   function render() {
     closeMenu();
-    completedToggle.checked = state.showCompleted;
-    completedLabel.textContent = state.showCompleted ? "Скрыть выполненные" : "Показать выполненные";
+    syncToolbar();
     periodTrigger.querySelector("[data-period]").textContent = periodText(state.start, state.end, true);
-    periodTrigger.setAttribute("aria-label", periodText());
+    periodTrigger.setAttribute(ACCESSIBLE_LABEL, periodText());
     periodClear.hidden = !state.start || !state.end;
     lists.innerHTML = `<section class="pfa-panel pfa-today" aria-labelledby="pfa-today-heading">
       <header class="pfa-panel-head">
@@ -894,6 +947,34 @@
     paintIcons();
   }
 
+  function isAnyProjectExpanded() {
+    return state.projectOrder.some(id => !state.collapsedProjects.includes(id));
+  }
+
+  function toolbarIcon(button, { name, fallback, label }) {
+    button.innerHTML = icon(name, fallback);
+    button.setAttribute(ACCESSIBLE_LABEL, label);
+    button.setAttribute(TOOLTIP, label);
+  }
+
+  function syncToolbar() {
+    const { showCompleted: isCompletedVisible } = state;
+    toolbarIcon(completedToggle, isCompletedVisible ? shown : hidden);
+    toolbarIcon(foldProjects, isAnyProjectExpanded() ? expanded : collapsed);
+    foldProjects.disabled = !state.projectOrder.length;
+  }
+
+  function syncBackToTop() {
+    bottomRail.hidden = window.scrollY <= TOP_SCROLL_OFFSET;
+  }
+
+  function scrollToTop(control) {
+    const isMotionReduced = window.matchMedia(REDUCED_MOTION).matches;
+    const behavior = isMotionReduced ? instant : smooth;
+    if (document.activeElement === control) heading.focus(FOCUS_WITHOUT_SCROLL);
+    window.scrollTo({ top: TOP_SCROLL_OFFSET, behavior });
+  }
+
   function toggleProject(button, id) {
     const content = document.getElementById(button.getAttribute("aria-controls"));
     const collapse = !content.hidden;
@@ -902,6 +983,8 @@
     state.collapsedProjects = collapse
       ? [...state.collapsedProjects, id]
       : state.collapsedProjects.filter(projectId => projectId !== id);
+    syncToolbar();
+    paintIcons();
     save();
   }
 
@@ -1032,7 +1115,7 @@
     }).join("");
     calendarSelection.textContent = start && end ? periodText(start, end) : start ? "Выбери дату окончания" : "Выбери дату начала";
     periodApply.disabled = !start || !end;
-    if (focusDate) calendarDays.querySelector(`[data-date="${focusDate}"]`)?.focus({ preventScroll: true });
+    if (focusDate) calendarDays.querySelector(`[data-date="${focusDate}"]`)?.focus(FOCUS_WITHOUT_SCROLL);
   }
 
   function togglePeriodPicker() {
@@ -1052,7 +1135,7 @@
     periodDraft = null;
     periodPicker.hidden = true;
     periodTrigger.setAttribute("aria-expanded", "false");
-    if (restoreFocus) periodTrigger.focus({ preventScroll: true });
+    if (restoreFocus) periodTrigger.focus(FOCUS_WITHOUT_SCROLL);
   }
 
   function shiftCalendarMonth(step) {
@@ -1077,7 +1160,7 @@
     state.end = end;
     closePeriodPicker();
     update(start ? "Период обновлён" : "Даты периода удалены");
-    periodTrigger.focus({ preventScroll: true });
+    periodTrigger.focus(FOCUS_WITHOUT_SCROLL);
   }
 
   function taskNames(ids) {
@@ -1129,7 +1212,7 @@
     state.tasks[copy] = { ...task, title, done: false };
     items.splice(position + 1, 0, copy);
     update("Копия задачи создана");
-    lists.querySelector(`[data-action="menu"][data-id="${copy}"]`)?.focus({ preventScroll: true });
+    lists.querySelector(`[data-action="menu"][data-id="${copy}"]`)?.focus(FOCUS_WITHOUT_SCROLL);
   }
 
   function transferTask(group, id, source) {
@@ -1229,7 +1312,7 @@
     let next = 0;
     state.lists[group] = state.lists[group].map(taskId => state.tasks[taskId].done ? taskId : items[next++]);
     update("Порядок изменён");
-    root.querySelector(`[data-action="order"][data-group="${group}"][data-id="${item}"]`)?.focus({ preventScroll: true });
+    root.querySelector(`[data-action="order"][data-group="${group}"][data-id="${item}"]`)?.focus(FOCUS_WITHOUT_SCROLL);
   }
 
   root.addEventListener("click", event => {
@@ -1256,6 +1339,15 @@
       case "period-day": selectPeriodDay(control.dataset.date); break;
       case "apply-period": savePeriod(periodDraft.start, periodDraft.end); break;
       case "toggle-project": toggleProject(control, id); break;
+      case toggleCompleted:
+        state.showCompleted = !state.showCompleted;
+        update();
+        break;
+      case foldProjectsAction:
+        state.collapsedProjects = isAnyProjectExpanded() ? [...state.projectOrder] : [];
+        update();
+        break;
+      case backToTop: scrollToTop(control); break;
       case "create": namedTask(id, undefined, control); break;
       case "archive-project": archiveProject(id, control); break;
       case "move": move(group, taskId); break;
@@ -1282,12 +1374,6 @@
 
   root.addEventListener("change", event => {
     const input = event.target;
-    if (input === completedToggle) {
-      closePeriodPicker();
-      state.showCompleted = input.checked;
-      update();
-      return;
-    }
     if (!input.matches("[data-check]")) return;
     const id = Number(input.dataset.check);
     const group = input.closest(".pfa-row").dataset.itemGroup;
@@ -1301,7 +1387,7 @@
       const active = activeTaskIds(group);
       const next = active[Math.min(previousIndex, active.length - 1)];
       const checkbox = root.querySelector(`[data-check="${id}"]`) || root.querySelector(`[data-check="${next}"]`);
-      (checkbox || completedToggle).focus({ preventScroll: true });
+      (checkbox || completedToggle).focus(FOCUS_WITHOUT_SCROLL);
     }
   });
 
@@ -1368,7 +1454,7 @@
       const replacement = [...root.querySelectorAll(`button[data-action="${action}"]`)].find(
         button => button.dataset.id === id && button.dataset.group === (focusGroup ?? group)
       );
-      (replacement || root.querySelector('[data-action="period"]')).focus({ preventScroll: true });
+      (replacement || root.querySelector('[data-action="period"]')).focus(FOCUS_WITHOUT_SCROLL);
     }
   });
 
@@ -1413,7 +1499,9 @@
     }
   });
 
+  window.addEventListener(SCROLL_EVENT, syncBackToTop, PASSIVE_SCROLL);
   render();
+  syncBackToTop();
 })();
 </script>
 </body>

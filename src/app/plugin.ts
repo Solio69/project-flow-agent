@@ -1,9 +1,9 @@
 import { Notice, Plugin } from "obsidian";
-import { createCompletedVisibility, CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW, CurrentTasksView } from "../pages/current-tasks";
+import { createViewPreferences, CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW, CurrentTasksView } from "../pages/current-tasks";
 import { WORKSPACE_TAB } from "../shared/api/obsidian";
 import { CURRENT_TASKS_ICON, ERROR_COPY } from "./plugin.constants";
 
-const { openViewLog, openViewNotice, loadSettingsLog, saveVisibilityLog, saveVisibilityNotice } = ERROR_COPY;
+const { openViewLog, openViewNotice, loadSettingsLog, savePreferencesLog, savePreferencesNotice } = ERROR_COPY;
 
 export default class ProjectFlowAgentPlugin extends Plugin {
   private opening?: Promise<void>;
@@ -13,15 +13,15 @@ export default class ProjectFlowAgentPlugin extends Plugin {
       console.error(loadSettingsLog, error);
       return undefined;
     });
-    const completedVisibility = createCompletedVisibility(
+    const preferences = createViewPreferences(
       savedSettings,
       (settings) => this.saveData(settings),
       (error) => {
-        console.error(saveVisibilityLog, error);
-        new Notice(saveVisibilityNotice);
+        console.error(savePreferencesLog, error);
+        new Notice(savePreferencesNotice);
       },
     );
-    this.registerView(CURRENT_TASKS_VIEW, (leaf) => new CurrentTasksView(leaf, completedVisibility));
+    this.registerView(CURRENT_TASKS_VIEW, (leaf) => new CurrentTasksView(leaf, preferences));
     this.addRibbonIcon(CURRENT_TASKS_ICON, CURRENT_TASKS_TITLE, () => {
       this.opening ??= this.openCurrentTasks()
         .catch((error: unknown) => {

@@ -2,12 +2,13 @@ import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ALERT_ROLE, OMIT_FROM_TAB_ORDER } from "../../../../shared/lib/dom";
 import { CreateTaskDialog, type CreateTaskProject, type RequestCreateTask } from "../dialogs/CreateTaskDialog";
 import { TasksList } from "../TasksList";
+import { BackToTop } from "../BackToTop";
 import { NoteLink, type OpenNote } from "../NoteLink";
 import type { TaskFromButton } from "../Task";
 import { RenameTaskDialog, type RenameSelection, type RequestRenameTask } from "../dialogs/RenameTaskDialog";
 import { TaskArchiveDialog, type RequestArchiveTask } from "../dialogs/TaskArchiveDialog";
 import { TaskTransferDialog, type RequestTransferTask } from "../dialogs/TaskTransferDialog";
-import type { CompletedVisibility } from "../../model/completed-visibility";
+import type { ViewPreferences } from "../../model/view-preferences";
 import type { ArchiveReceipt, ArchiveSelection, ArchiveTask } from "../../model/task-archive";
 import type { SetCompleted } from "../../model/task-completion";
 import type { CreateTask } from "../../model/task-create";
@@ -45,13 +46,14 @@ function focusCreatedTask(control: HTMLButtonElement, path: string, selector?: s
 }
 
 export function CurrentTasks({
-  title, state, completedVisibility: { get, set, subscribe }, onChangePeriod,
+  title, state, preferences: { get, subscribe, setCompletedVisible, setProjectsCollapsed }, scrollContainer, onChangePeriod,
   onOpenNote, onOpenSource, onSetCompleted, onMoveTask, onReorderTask, onCreateTask, onRenameTask, onTransferTask, onArchiveTask,
   onCopyTaskPath, onDuplicateTask,
 }: {
   title: string;
   state: CurrentTasksState;
-  completedVisibility: CompletedVisibility;
+  preferences: ViewPreferences;
+  scrollContainer: HTMLElement;
   onOpenNote: OpenNote;
   onOpenSource: () => Promise<void>;
   onChangePeriod?: ChangePeriod;
@@ -65,7 +67,7 @@ export function CurrentTasks({
   onCopyTaskPath?: CopyTaskPath;
   onDuplicateTask?: DuplicateTask;
 }) {
-  const isCompletedVisible = useSyncExternalStore(subscribe, get, get);
+  const { showCompleted: isCompletedVisible, collapsedProjects } = useSyncExternalStore(subscribe, get, get);
   const [createProject, setCreateProject] = useState<CreateTaskProject>();
   const createFocus = useRef<CreateFocus | null>(null);
   const [duplicateFocus, setDuplicateFocus] = useState<CreateFocus>();
@@ -77,6 +79,7 @@ export function CurrentTasks({
   const transferFocus = useRef<TaskActionFocus | null>(null);
   const screen = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
+  const panels = useRef<HTMLDivElement>(null);
   const isReady = isKindReady(state);
   const sourcePath = isReady ? state.document.sourcePath : undefined;
   const sourceNote = { title, link: sourcePath, notePath: sourcePath };
@@ -182,9 +185,12 @@ export function CurrentTasks({
       return (
         <TasksList
           document={document}
+          panelsRef={panels}
           onChangePeriod={onChangePeriod}
           showCompleted={isCompletedVisible}
-          onShowCompletedChange={set}
+          onShowCompletedChange={setCompletedVisible}
+          collapsedProjects={collapsedProjects}
+          onProjectsCollapsed={setProjectsCollapsed}
           onOpenNote={onOpenNote}
           onSetCompleted={onSetCompleted}
           onMoveTask={onMoveTask}
@@ -214,6 +220,7 @@ export function CurrentTasks({
         </h2>
       </header>
       {renderContent()}
+      {isReady && <BackToTop container={scrollContainer} heading={pageHeading} page={screen} panels={panels} />}
       {createProject && (
         <CreateTaskDialog project={createProject} createTask={onCreateTask} onClose={closeCreateDialog} />
       )}

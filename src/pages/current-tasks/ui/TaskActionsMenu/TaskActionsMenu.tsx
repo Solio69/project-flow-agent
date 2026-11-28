@@ -1,6 +1,6 @@
 import type { IconName } from "obsidian";
 import { useId, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
-import { BUTTON_TYPE, DIALOG_POPUP, GROUP_ROLE, KEYBOARD_KEY } from "../../../../shared/lib/dom";
+import { BUTTON_TYPE, DIALOG_POPUP, FOCUS_WITHOUT_SCROLL, GROUP_ROLE, KEYBOARD_KEY } from "../../../../shared/lib/dom";
 import { Icon } from "../../../../shared/ui";
 import { focusTaskControl } from "../task-focus";
 import { TASK_ARCHIVE_COPY, TASK_ARCHIVE_ICON } from "../../model/task-archive";
@@ -67,7 +67,7 @@ export function TaskActionsMenu({ label, onRename, onDuplicate, onTransfer, onAr
     const isAbove = isClippedBelow && isSpaceAboveLarger;
     const maxHeight = Math.max(0, isAbove ? spaceAbove : spaceBelow);
     setPlacement({ isAbove, maxHeight });
-    firstAction.current?.focus({ preventScroll: true });
+    firstAction.current?.focus(FOCUS_WITHOUT_SCROLL);
   }, [isOpen]);
 
   function close(isFocusReturnRequested: boolean) {

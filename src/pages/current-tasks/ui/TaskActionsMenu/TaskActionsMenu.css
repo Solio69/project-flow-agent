@@ -9,7 +9,7 @@
 
 .pfa-current-tasks .pfa-task-menu {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   inset-block-start: calc(100% + 5px);
   inset-inline-end: 0;
   display: flex;

@@ -19,14 +19,16 @@ import {
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
   moveAfterComment, moveCases, moveWithDuplicatePeriod, obsoleteTasks, propertyTasks,
-  periodChange, periodWithYamlBlock, readOnlyPeriodCases, renameWithAlias, renameWithoutAliasCases, reorderCases, reorderInsideEdgeText, reorderWithEdgeText, taskWithTitlePrefix, transferTaskCases,
+  periodChange, periodWithYamlBlock, readOnlyPeriodCases, renameWithAlias, renameWithoutAliasCases,
+  reorderCases, reorderInsideEdgeText, reorderedBlogPanels, reorderWithEdgeText, repeatedBlogPanels,
+  taskWithTitlePrefix, transferTaskCases,
   archiveTaskCases, transferWithAmbiguousToday, transferWithShortLink,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
   createTaskCase,
-  aliasedBlogExpected, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown, iconizeFixture,
-  moveFeedback, moveProjectConflict, notePathCopy, projectLinkCase, reorderTasks, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
-  activeTaskOrder, archiveTaskCase, existingPluginSettings, renameTaskCase, transferTaskCase, visibleTaskOrderBeforeWrite, watchFixture,
+  aliasedBlogExpected, collapsedProjectSettings, completedVisibilityCases, completionFeedback, currentTasksExpected, differentTaskNoteMarkdown, iconizeFixture,
+  moveFeedback, moveProjectConflict, notePathCopy, projectLinkCase, reorderTasks, repeatedProjectPanels, sourceNotePaths, taskCheckboxLabel, taskCompletionOrder, taskGripWithIcon, taskNoteMarkdown, tasksDesign,
+  activeTaskOrder, archiveTaskCase, existingPluginSettings, renameTaskCase, transferTaskCase, visiblePluginSettings, visibleTaskOrderBeforeWrite, watchFixture,
 } from "./fixtures/scaffold-data.mjs";
 
 const require = createRequire(import.meta.url);
@@ -1066,7 +1068,8 @@ test("переключатель называет следующее дейст�
     let requested;
     const toolbar = TasksToolbar({ showCompleted: visible, onShowCompletedChange: (value) => { requested = value; } });
     assert.ok(renderToStaticMarkup(toolbar).includes(label));
-    const toggle = toolbar.props.children.find(({ props }) => typeof props.onClick === "function");
+    const tools = toolbar.props.children.find(({ props }) => props.role === "group");
+    const toggle = tools?.props.children.find(({ props }) => props["aria-label"] === label);
     assert.ok(toggle);
     toggle.props.onClick();
     assert.equal(requested, next);
@@ -1098,61 +1101,121 @@ test("отметка записывает порядок выполненных,
   }
 });
 
+function visibleTaskLabels(markup) {
+  return [...markup.matchAll(taskCheckboxLabel)].map(([, title]) => title);
+}
+
 test("выполненные видны по умолчанию после активных даже в смешанном списке", async (t) => {
   const [[initial]] = completionOrderCases;
   const { mounts, writes } = await openTasksFixture(t, initial);
   const { markup } = mounts.at(-1);
   assert.match(markup, tasksDesign.showCompleted);
-  const labels = [...markup.matchAll(taskCheckboxLabel)].map(([, title]) => title);
-  assert.deepEqual(labels, visibleTaskOrderBeforeWrite);
+  assert.deepEqual(visibleTaskLabels(markup), visibleTaskOrderBeforeWrite);
   assert.deepEqual(writes, []);
 });
+
+async function openWithViewSettings(settings, markdown) {
+  const fixture = await createCurrentTasksFixture({ settings });
+  const { controls, mounts, ribbonClick, writes } = fixture;
+  controls.markdown = markdown;
+  await ribbonClick();
+  const { markup, element: { props: { preferences } } } = mounts.at(-1);
+  return { fixture, markup, preferences, writes };
+}
+
+function pauseSettingsSave(settings, isVisible) {
+  const { promise: started, resolve: announceStart } = Promise.withResolvers();
+  const { promise: paused, resolve: resume } = Promise.withResolvers();
+  settings.beforeSave = ({ showCompleted: isCompletedVisible }) => {
+    if (isCompletedVisible !== isVisible) return;
+    announceStart();
+    return paused;
+  };
+  return { started, resume };
+}
 
 test("видимость выполненных восстанавливается после перезапуска плагина", async () => {
   const [[markdown]] = completionOrderCases;
   const settings = { data: existingPluginSettings };
-  const openWithSavedSettings = async () => {
-    const fixture = await createCurrentTasksFixture({ settings });
-    const { activeLeaf, controls, mounts, ribbonClick, writes } = fixture;
-    controls.markdown = markdown;
-    await ribbonClick();
-    const { markup, element: { props } } = mounts.at(-1);
-    const labels = [...markup.matchAll(taskCheckboxLabel)].map(([, title]) => title);
-    return { fixture, markup, labels, visibility: props.completedVisibility, writes };
-  };
-
-  const initial = await openWithSavedSettings();
+  const initial = await openWithViewSettings(settings, markdown);
   assert.match(initial.markup, tasksDesign.hideCompleted);
-  assert.deepEqual(initial.labels, activeTaskOrder);
+  assert.deepEqual(visibleTaskLabels(initial.markup), activeTaskOrder);
 
-  const firstSaveStarted = Promise.withResolvers();
-  const finishFirstSave = Promise.withResolvers();
-  settings.beforeSave = ({ showCompleted }) => {
-    if (!showCompleted) return;
-    firstSaveStarted.resolve();
-    return finishFirstSave.promise;
-  };
-  const show = initial.visibility.set(true);
-  await firstSaveStarted.promise;
-  const hide = initial.visibility.set(false);
-  finishFirstSave.resolve();
+  const { started, resume } = pauseSettingsSave(settings, true);
+  const show = initial.preferences.setCompletedVisible(true);
+  await started;
+  const hide = initial.preferences.setCompletedVisible(false);
+  resume();
   await Promise.all([show, hide]);
   await initial.fixture.activeLeaf.view.onClose();
 
-  const hidden = await openWithSavedSettings();
+  const hidden = await openWithViewSettings(settings, markdown);
   assert.match(hidden.markup, tasksDesign.hideCompleted);
-  assert.deepEqual(hidden.labels, activeTaskOrder);
+  assert.deepEqual(visibleTaskLabels(hidden.markup), activeTaskOrder);
   assert.deepEqual(settings.data, existingPluginSettings);
   settings.beforeSave = undefined;
-  await hidden.visibility.set(true);
+  await hidden.preferences.setCompletedVisible(true);
   await hidden.fixture.activeLeaf.view.onClose();
 
-  const visible = await openWithSavedSettings();
+  const visible = await openWithViewSettings(settings, markdown);
   assert.match(visible.markup, tasksDesign.showCompleted);
-  assert.deepEqual(visible.labels, visibleTaskOrderBeforeWrite);
-  assert.deepEqual(settings.data, { ...existingPluginSettings, showCompleted: true });
+  assert.deepEqual(visibleTaskLabels(visible.markup), visibleTaskOrderBeforeWrite);
+  assert.deepEqual(settings.data, visiblePluginSettings);
   assert.deepEqual([...initial.writes, ...hidden.writes, ...visible.writes], []);
   await visible.fixture.activeLeaf.view.onClose();
+});
+
+test("свёрнутые проекты и видимость выполненных сохраняются вместе и восстанавливаются", async () => {
+  const [{ markdown }] = transferTaskCases;
+  const { both, first, second, afterSave } = collapsedProjectSettings;
+  const settings = { data: existingPluginSettings };
+  const initial = await openWithViewSettings(settings, markdown);
+  assert.match(initial.markup, tasksDesign.collapseProjects);
+  const { started, resume } = pauseSettingsSave(settings, false);
+  const collapse = initial.preferences.setProjectsCollapsed(both, true);
+  await started;
+  const show = initial.preferences.setCompletedVisible(true);
+  resume();
+  await Promise.all([collapse, show]);
+  await initial.fixture.activeLeaf.view.onClose();
+
+  const reopened = await openWithViewSettings(settings, markdown);
+  assert.match(reopened.markup, tasksDesign.expandProjects);
+  assert.match(reopened.markup, tasksDesign.showCompleted);
+  assert.equal(reopened.preferences.get().showCompleted, true);
+  assert.deepEqual([...reopened.preferences.get().collapsedProjects], both);
+  assert.deepEqual(settings.data, afterSave);
+  await reopened.preferences.setProjectsCollapsed(first, false);
+  assert.deepEqual([...reopened.preferences.get().collapsedProjects], second);
+  await reopened.fixture.activeLeaf.view.onClose();
+  assert.deepEqual([...initial.writes, ...reopened.writes], []);
+});
+
+test("сохранённое сворачивание применяется к одной карточке из двух с общей проектной заметкой", async (t) => {
+  const { settings, firstCollapsed, secondExpanded } = repeatedProjectPanels;
+  const { fixture, markup, writes } = await openWithViewSettings({ data: settings }, repeatedBlogPanels);
+  t.after(() => fixture.activeLeaf.view.onClose());
+
+  assert.match(markup, firstCollapsed);
+  assert.match(markup, secondExpanded);
+  assert.match(markup, tasksDesign.collapseProjects);
+  assert.deepEqual(writes, []);
+});
+
+test("после перестановки заголовков восстанавливается состояние той же карточки", async (t) => {
+  const { legacySecondSettings, migratedSecondSettings, firstExpanded, secondCollapsed } = repeatedProjectPanels;
+  const settings = { data: legacySecondSettings };
+  const initial = await openWithViewSettings(settings, repeatedBlogPanels);
+  assert.match(initial.markup, firstExpanded);
+  assert.match(initial.markup, secondCollapsed);
+  await initial.fixture.activeLeaf.view.onClose();
+
+  const reopened = await openWithViewSettings(settings, reorderedBlogPanels);
+  t.after(() => reopened.fixture.activeLeaf.view.onClose());
+  assert.match(reopened.markup, secondCollapsed);
+  assert.match(reopened.markup, firstExpanded);
+  assert.deepEqual(settings.data, migratedSecondSettings);
+  assert.deepEqual([...initial.writes, ...reopened.writes], []);
 });
 
 test("галочка сохраняет текст между задачами и блокирует перестановку через него", async (t) => {

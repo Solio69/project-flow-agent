@@ -2,7 +2,7 @@ import { ItemView, Notice, type WorkspaceLeaf } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import { SPACE } from "../../../shared/lib";
 import { CurrentTasks } from "./CurrentTasks";
-import type { CompletedVisibility } from "../model/completed-visibility";
+import type { ViewPreferences } from "../model/view-preferences";
 import { ERROR_COPY } from "./current-tasks-view.constants";
 import { CURRENT_TASKS_TITLE, CURRENT_TASKS_VIEW } from "../model/current-tasks.constants";
 import {
@@ -70,7 +70,7 @@ export class CurrentTasksView extends ItemView {
   private isEditInFlight = false;
   private readonly pendingDuplicates = new Map<string, CreatedTaskReceipt>();
 
-  constructor(leaf: WorkspaceLeaf, private readonly completedVisibility: CompletedVisibility) {
+  constructor(leaf: WorkspaceLeaf, private readonly preferences: ViewPreferences) {
     super(leaf);
   }
 
@@ -115,6 +115,7 @@ export class CurrentTasksView extends ItemView {
     this.relatedPaths.clear();
     if (isKindReady(state)) {
       const { groups } = state.document;
+      void this.preferences.migrateCollapsedProjects(groups);
       for (const { notePath, tasks } of groups) {
         if (notePath) this.relatedPaths.add(notePath);
         for (const { notePath: taskPath } of tasks) {
@@ -156,7 +157,8 @@ export class CurrentTasksView extends ItemView {
       <CurrentTasks
         title={CURRENT_TASKS_TITLE}
         state={state}
-        completedVisibility={this.completedVisibility}
+        preferences={this.preferences}
+        scrollContainer={this.contentEl}
         onOpenNote={onOpenNote}
         onOpenSource={onOpenSource}
         onCopyTaskPath={onCopyTaskPath}

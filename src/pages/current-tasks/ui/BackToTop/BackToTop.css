@@ -1,0 +1,32 @@
+.pfa-current-tasks .pfa-bottom-rail {
+  position: sticky;
+  z-index: 2;
+  inset-block-end: 0;
+  display: flex;
+  justify-content: center;
+  margin-block-end: calc(0px - var(--pfa-page-inset));
+  padding-block: 6px 10px;
+  pointer-events: none;
+}
+
+.pfa-current-tasks .pfa-bottom-rail[hidden] {
+  display: none;
+}
+
+.pfa-current-tasks .pfa-bottom-rail .pfa-control {
+  --pfa-back-to-top-surface: transparent;
+  background: var(--pfa-back-to-top-surface);
+  color: var(--pfa-text);
+  pointer-events: auto;
+}
+
+.pfa-current-tasks .pfa-bottom-rail[data-over-list="true"] .pfa-control {
+  --pfa-back-to-top-surface: color-mix(in srgb, var(--pfa-remaining) 65%, var(--pfa-task-surface));
+}
+
+@media (hover: hover) {
+  .pfa-current-tasks .pfa-bottom-rail .pfa-control:hover {
+    border-color: var(--pfa-control-border-hover);
+    background: color-mix(in srgb, var(--pfa-control-ink) var(--pfa-control-hover-opacity), var(--pfa-back-to-top-surface));
+  }
+}

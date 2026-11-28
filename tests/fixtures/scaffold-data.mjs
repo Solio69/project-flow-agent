@@ -112,8 +112,10 @@ export const tasksDesign = {
   projectPanel: 'data-section="project"',
   disclosure: /aria-expanded="true"/,
   history: /<button(?=[^>]*disabled="")(?=[^>]*aria-label="Перенести выполненные в историю")[^>]*>/,
-  showCompleted: /<button[^>]*data-show-completed="true"[^>]*>.*?Скрыть выполненные/,
-  hideCompleted: /<button[^>]*data-show-completed="false"[^>]*>.*?Показать выполненные/,
+  showCompleted: /<button[^>]*aria-label="Скрыть выполненные"/,
+  hideCompleted: /<button[^>]*aria-label="Показать выполненные"/,
+  expandProjects: /<button[^>]*aria-label="Развернуть все проекты"/,
+  collapseProjects: /<button[^>]*aria-label="Свернуть все проекты"/,
 };
 
 export const completedVisibilityCases = [
@@ -125,6 +127,25 @@ export const taskCompletionOrder = ["Черновик", "Вторая задач
 export const visibleTaskOrderBeforeWrite = ["Черновик", "Вторая задача", "Другая активная задача", "Готовая задача"];
 export const activeTaskOrder = visibleTaskOrderBeforeWrite.slice(0, -1);
 export const existingPluginSettings = { sampleSetting: "существующее значение", showCompleted: false };
+export const visiblePluginSettings = { ...existingPluginSettings, showCompleted: true };
+const firstProjectKeys = ['["Мастерская/Мастерская.md","Мастерская"]'];
+const secondProjectKeys = ['["Блог/Блог.md","Контент"]'];
+const bothProjectKeys = [...firstProjectKeys, ...secondProjectKeys];
+export const collapsedProjectSettings = {
+  both: bothProjectKeys,
+  first: firstProjectKeys,
+  second: secondProjectKeys,
+  afterSave: { ...visiblePluginSettings, collapsedProjects: bothProjectKeys },
+};
+export const repeatedProjectPanels = {
+  settings: { ...existingPluginSettings, collapsedProjects: [transferTaskCase.projectPath] },
+  legacySecondSettings: { ...existingPluginSettings, collapsedProjects: ['["Блог/Блог.md",1]'] },
+  migratedSecondSettings: { ...existingPluginSettings, collapsedProjects: ['["Блог/Блог.md","Редакция"]'] },
+  firstCollapsed: /aria-label="Развернуть список проекта «Контент»"[^>]*aria-expanded="false"/,
+  firstExpanded: /aria-label="Свернуть список проекта «Контент»"[^>]*aria-expanded="true"/,
+  secondCollapsed: /aria-label="Развернуть список проекта «Редакция»"[^>]*aria-expanded="false"/,
+  secondExpanded: /aria-label="Свернуть список проекта «Редакция»"[^>]*aria-expanded="true"/,
+};
 export const taskCheckboxLabel = /<input\s[^>]*aria-label="Выполнено: ([^"]+)"/g;
 export const taskGripWithIcon = /class="pfa-task-grip"[^>]*><span/g;
 

@@ -5,7 +5,6 @@ import type { LinkedTaskGroup } from "../../model/linked-tasks";
 
 export const DIAGNOSTIC_LABEL_SUFFIX = `.${SPACE}`;
 export const TASK_MOVE_CONTROL_SELECTOR = "button[data-task-path]";
-export const MOVE_FOCUS_OPTIONS = { preventScroll: true } as const;
 
 export const COPY = {
   diagnosticsTitle: "Замечания к заметке",
