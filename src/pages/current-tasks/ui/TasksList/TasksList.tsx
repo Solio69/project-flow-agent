@@ -7,26 +7,27 @@ import type { RequestRenameTask } from "../dialogs/RenameTaskDialog";
 import type { TaskFromButton } from "../Task";
 import { TaskPanel } from "../TaskPanel";
 import { TasksToolbar } from "../TasksToolbar";
-import { LIST_KEY_SEPARATOR, TASK_GROUP_KIND } from "../../model/current-tasks.constants";
-import type { LinkedTaskGroup, TasksSnapshot } from "../../model/linked-tasks";
+import { LIST_KEY_SEPARATOR } from "../../model/current-tasks.constants";
+import type { TasksSnapshot } from "../../model/linked-tasks";
 import type { SetCompleted } from "../../model/task-completion";
 import {
   canRestoreTaskFocus,
   focusTaskControl,
+  focusTaskElement,
   hasTaskControlFocus,
 } from "../task-focus";
 import {
   PANEL_DISCLOSURE_SELECTOR,
+  PANEL_TITLE_SELECTOR,
   TASK_PANEL_SELECTOR,
   TASK_ROW_PATH_SELECTOR,
 } from "../task-focus.constants";
-import { isTodayGroup } from "../../model/task-group";
 import type { MoveTask } from "../../model/task-move";
 import type { CopyTaskPath } from "../../model/task-note-path";
 import type { ChangePeriod } from "../../model/task-period";
 import type { ReorderTask } from "../../model/task-reorder";
 import type { TransferReceipt } from "../../model/task-transfer";
-import type { SetCompletedVisible, SetProjectsCollapsed } from "../../model/view-preferences";
+import { collectTaskPanels, type SetCompletedVisible, type SetProjectsCollapsed } from "../../model/view-preferences";
 import type { RequestTransferTask } from "../dialogs/TaskTransferDialog";
 import type { RequestArchiveTask } from "../dialogs/TaskArchiveDialog";
 import type { ActionDiagnostic } from "../../model/types";
@@ -39,49 +40,27 @@ import {
 
 const { diagnosticsTitle, lineLabel } = COPY;
 
-type Panel = { group: LinkedTaskGroup; isToday: boolean; key: string };
-type MoveOrigin = { panel: HTMLElement; nearbyRows: (Element | null | undefined)[] };
-type MoveFocus = { control: HTMLButtonElement; notePath: string; origin?: MoveOrigin };
+type MoveFocus = { control: HTMLButtonElement; panel: HTMLElement; nearbyRows: (Element | null | undefined)[] };
 
-function collectPanels(groups: readonly LinkedTaskGroup[]) {
-  const todayPanels: Panel[] = [];
-  const projectPanels: Panel[] = [];
-  const occurrences = new Map<string, number>();
-
-  for (const group of groups) {
-    const { kind, notePath, link, title } = group;
-    const isToday = isTodayGroup(group);
-    const identity = notePath ?? link ?? title;
-    const occurrenceKey = `${kind}${LIST_KEY_SEPARATOR}${identity}`;
-    const occurrence = occurrences.get(occurrenceKey) ?? 0;
-    occurrences.set(occurrenceKey, occurrence + 1);
-
-    const key = occurrence ? JSON.stringify([identity, occurrence]) : identity;
-    const panels = isToday ? todayPanels : projectPanels;
-    panels.push({ group, isToday, key });
-  }
-  if (!todayPanels.length)
-    todayPanels.push({ group: EMPTY_TODAY, isToday: true, key: EMPTY_TODAY.title });
-
-  return { todayPanels, projectPanels };
-}
-
-function projectMoveOrigin(control: HTMLButtonElement): MoveOrigin | undefined {
+function captureMoveFocus(control: HTMLButtonElement): MoveFocus | null {
   const panel = control.closest<HTMLElement>(TASK_PANEL_SELECTOR);
-  if (panel?.dataset.section !== TASK_GROUP_KIND.project) return;
+  if (!panel) return null;
   const row = control.closest(TASK_ROW_PATH_SELECTOR);
   const nearbyRows = [row?.nextElementSibling, row?.previousElementSibling];
-  return { panel, nearbyRows };
+  return { control, panel, nearbyRows };
 }
 
-function focusMoveOrigin(control: HTMLButtonElement, { panel, nearbyRows }: MoveOrigin) {
+function restoreMoveFocus({ control, panel, nearbyRows }: MoveFocus) {
+  if (!canRestoreTaskFocus(control)) return;
   if (focusTaskControl(control, FOCUS_WITHOUT_SCROLL)) return;
   for (const row of nearbyRows) {
     const arrow = row?.querySelector<HTMLButtonElement>(TASK_MOVE_CONTROL_SELECTOR);
     if (focusTaskControl(arrow, FOCUS_WITHOUT_SCROLL)) return;
   }
-  const disclosure = panel.querySelector<HTMLButtonElement>(PANEL_DISCLOSURE_SELECTOR);
-  focusTaskControl(disclosure, FOCUS_WITHOUT_SCROLL);
+  const title = panel.querySelector<HTMLHeadingElement>(PANEL_TITLE_SELECTOR);
+  const disclosure = title?.parentElement?.querySelector<HTMLButtonElement>(PANEL_DISCLOSURE_SELECTOR);
+  if (!focusTaskControl(disclosure, FOCUS_WITHOUT_SCROLL))
+    focusTaskElement(title, FOCUS_WITHOUT_SCROLL);
 }
 
 function renderDiagnostic({ line, message }: ActionDiagnostic) {
@@ -140,7 +119,9 @@ export function TasksList({
   const revealedTransfer = useRef<TransferReceipt | undefined>(undefined);
   const diagnosticCount = diagnostics.length;
   const isDiagnosticListVisible = diagnosticCount > 0;
-  const { todayPanels, projectPanels } = collectPanels(groups);
+  const { todayPanels, projectPanels } = collectTaskPanels(groups);
+  if (!todayPanels.length)
+    todayPanels.push({ group: EMPTY_TODAY, isToday: true, key: EMPTY_TODAY.title });
   const panels = [...todayPanels, ...projectPanels];
   const projectKeys = projectPanels.map(({ key }) => key);
   const isAnyProjectExpanded = projectKeys.some((key) => !collapsedProjects.has(key));
@@ -163,10 +144,7 @@ export function TasksList({
 
   const moveFromButton: TaskFromButton | undefined = onMoveTask
     ? (task, control) => {
-        if (hasTaskControlFocus(control)) {
-          const { notePath } = task;
-          moveFocus.current = { control, notePath, origin: projectMoveOrigin(control) };
-        }
+        moveFocus.current = hasTaskControlFocus(control) ? captureMoveFocus(control) : null;
         void onMoveTask(task);
       }
     : undefined;
@@ -175,29 +153,7 @@ export function TasksList({
     const { current: pending } = moveFocus;
     if (!pending || !onMoveTask) return;
     moveFocus.current = null;
-
-    const { control, notePath, origin } = pending;
-    if (!canRestoreTaskFocus(control)) return;
-    if (origin) {
-      focusMoveOrigin(control, origin);
-      return;
-    }
-    if (focusTaskControl(control)) return;
-
-    const moveControls = panelsRef.current?.querySelectorAll<HTMLButtonElement>(
-      TASK_MOVE_CONTROL_SELECTOR,
-    );
-    const next = Array.from(moveControls ?? []).find(
-      ({ dataset: { taskPath } }) => taskPath === notePath,
-    );
-    if (focusTaskControl(next)) return;
-
-    const panel = next?.closest(TASK_PANEL_SELECTOR);
-    const disclosure = panel?.querySelector<HTMLButtonElement>(
-      PANEL_DISCLOSURE_SELECTOR,
-    );
-    if (!focusTaskControl(disclosure))
-      focusTaskControl(completedToggleRef.current);
+    restoreMoveFocus(pending);
   }, [document, onMoveTask]);
 
   function focusCompletedToggle() {

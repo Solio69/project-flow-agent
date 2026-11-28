@@ -19,7 +19,9 @@ import {
   completionBeforeBrokenHeading, completionCases, completionOrderCases, completionWithOneActiveTask,
   completionWithShortLink, completionWithTwoTasks, duplicatedCompletion, externalListEdit,
   moveAfterComment, moveCases, moveWithDuplicatePeriod, obsoleteTasks, propertyTasks,
-  periodChange, periodWithYamlBlock, readOnlyPeriodCases, renameWithAlias, renameWithoutAliasCases, reorderCases, reorderInsideEdgeText, reorderWithEdgeText, repeatedBlogPanels, taskWithTitlePrefix, transferTaskCases,
+  periodChange, periodWithYamlBlock, readOnlyPeriodCases, renameWithAlias, renameWithoutAliasCases,
+  reorderCases, reorderInsideEdgeText, reorderedBlogPanels, reorderWithEdgeText, repeatedBlogPanels,
+  taskWithTitlePrefix, transferTaskCases,
   archiveTaskCases, transferWithAmbiguousToday, transferWithShortLink,
 } from "./fixtures/current-tasks-markdown.mjs";
 import {
@@ -1198,6 +1200,22 @@ test("сохранённое сворачивание применяется к 
   assert.match(markup, secondExpanded);
   assert.match(markup, tasksDesign.collapseProjects);
   assert.deepEqual(writes, []);
+});
+
+test("после перестановки заголовков восстанавливается состояние той же карточки", async (t) => {
+  const { legacySecondSettings, migratedSecondSettings, firstExpanded, secondCollapsed } = repeatedProjectPanels;
+  const settings = { data: legacySecondSettings };
+  const initial = await openWithViewSettings(settings, repeatedBlogPanels);
+  assert.match(initial.markup, firstExpanded);
+  assert.match(initial.markup, secondCollapsed);
+  await initial.fixture.activeLeaf.view.onClose();
+
+  const reopened = await openWithViewSettings(settings, reorderedBlogPanels);
+  t.after(() => reopened.fixture.activeLeaf.view.onClose());
+  assert.match(reopened.markup, secondCollapsed);
+  assert.match(reopened.markup, firstExpanded);
+  assert.deepEqual(settings.data, migratedSecondSettings);
+  assert.deepEqual([...initial.writes, ...reopened.writes], []);
 });
 
 test("галочка сохраняет текст между задачами и блокирует перестановку через него", async (t) => {

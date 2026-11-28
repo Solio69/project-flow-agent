@@ -128,15 +128,17 @@ export const completionOrderCases = [todayHeading, projectHeading].map((heading)
   completionOrderStates.map((rows) => `${completionHeader}${heading}\r\n${rows.join("\r\n")}${afterCompletion}`),
 );
 export const completionWithShortLink = `${completionList}${shortDraftRow}`;
-export const aliasedBlogTasks = `${completionHeader}${[
-  todayHeading,
-  "- [ ] [[Блог/Черновик блога]]",
-  "## [[Блог/Блог|Контент]]",
-].join("\r\n")}`;
-export const repeatedBlogPanels = `${aliasedBlogTasks}\r\n## [[Блог/Блог|Редакция]]`;
-
 const blogHeading = "## [[Блог/Блог|Контент]]";
+const editorialHeading = "## [[Блог/Блог|Редакция]]";
 const activeBlogRow = "- [ ] [[Блог/Черновик блога]]";
+const blogPanelsIntro = `${completionHeader}${[
+  todayHeading,
+  activeBlogRow,
+].join("\r\n")}`;
+export const aliasedBlogTasks = `${blogPanelsIntro}\r\n${blogHeading}`;
+export const repeatedBlogPanels = `${aliasedBlogTasks}\r\n${editorialHeading}`;
+export const reorderedBlogPanels = `${blogPanelsIntro}\r\n${editorialHeading}\r\n${blogHeading}`;
+
 const draftRow = completionRow(" ");
 const moveRow = secondCompletionRow(" ");
 const commentForNextTask = "\r\n<!-- Пояснение к следующей задаче -->\r\n";

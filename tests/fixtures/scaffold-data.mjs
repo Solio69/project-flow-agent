@@ -128,8 +128,8 @@ export const visibleTaskOrderBeforeWrite = ["Черновик", "Вторая з
 export const activeTaskOrder = visibleTaskOrderBeforeWrite.slice(0, -1);
 export const existingPluginSettings = { sampleSetting: "существующее значение", showCompleted: false };
 export const visiblePluginSettings = { ...existingPluginSettings, showCompleted: true };
-const firstProjectKeys = ["Мастерская/Мастерская.md"];
-const secondProjectKeys = [transferTaskCase.projectPath];
+const firstProjectKeys = ['["Мастерская/Мастерская.md","Мастерская"]'];
+const secondProjectKeys = ['["Блог/Блог.md","Контент"]'];
 const bothProjectKeys = [...firstProjectKeys, ...secondProjectKeys];
 export const collapsedProjectSettings = {
   both: bothProjectKeys,
@@ -139,7 +139,11 @@ export const collapsedProjectSettings = {
 };
 export const repeatedProjectPanels = {
   settings: { ...existingPluginSettings, collapsedProjects: [transferTaskCase.projectPath] },
+  legacySecondSettings: { ...existingPluginSettings, collapsedProjects: ['["Блог/Блог.md",1]'] },
+  migratedSecondSettings: { ...existingPluginSettings, collapsedProjects: ['["Блог/Блог.md","Редакция"]'] },
   firstCollapsed: /aria-label="Развернуть список проекта «Контент»"[^>]*aria-expanded="false"/,
+  firstExpanded: /aria-label="Свернуть список проекта «Контент»"[^>]*aria-expanded="true"/,
+  secondCollapsed: /aria-label="Развернуть список проекта «Редакция»"[^>]*aria-expanded="false"/,
   secondExpanded: /aria-label="Свернуть список проекта «Редакция»"[^>]*aria-expanded="true"/,
 };
 export const taskCheckboxLabel = /<input\s[^>]*aria-label="Выполнено: ([^"]+)"/g;

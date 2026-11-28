@@ -1,3 +1,4 @@
+export { collectTaskPanels } from "./task-panels";
 export {
   createViewPreferences,
   type SetCompletedVisible,

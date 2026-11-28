@@ -1,5 +1,7 @@
 import { isBoolean, isRecord, isString } from "../../../../shared/lib";
+import type { LinkedTaskGroup } from "../linked-tasks";
 import { COLLAPSED_PROJECTS_SETTING, DEFAULT_SHOW_COMPLETED, SHOW_COMPLETED_SETTING } from "./constants";
+import { collectTaskPanels } from "./task-panels";
 
 type PreferencesListener = () => void;
 type PluginSettings = Record<string, unknown>;
@@ -12,6 +14,7 @@ export type ViewPreferences = {
   get: () => PreferencesSnapshot;
   setCompletedVisible: SetCompletedVisible;
   setProjectsCollapsed: SetProjectsCollapsed;
+  migrateCollapsedProjects: (groups: readonly LinkedTaskGroup[]) => Promise<void>;
   subscribe: (listener: PreferencesListener) => () => void;
 };
 
@@ -39,6 +42,10 @@ export function createViewPreferences(
     return pendingSave;
   }
 
+  function updateCollapsedProjects(next: ReadonlySet<string>) {
+    return update({ ...snapshot, collapsedProjects: next }, { [COLLAPSED_PROJECTS_SETTING]: [...next] });
+  }
+
   return {
     get: () => snapshot,
     setCompletedVisible(isVisible) {
@@ -54,10 +61,21 @@ export function createViewPreferences(
         if (isCollapsed) nextCollapsedProjects.add(key);
         else nextCollapsedProjects.delete(key);
       }
-      return update(
-        { ...snapshot, collapsedProjects: nextCollapsedProjects },
-        { [COLLAPSED_PROJECTS_SETTING]: [...nextCollapsedProjects] },
-      );
+      return updateCollapsedProjects(nextCollapsedProjects);
+    },
+    migrateCollapsedProjects(groups) {
+      const { collapsedProjects: previouslyCollapsed } = snapshot;
+      if (!previouslyCollapsed.size) return pendingSave;
+      const { projectPanels } = collectTaskPanels(groups);
+      const legacyPanels = projectPanels.filter(({ legacyKey }) => previouslyCollapsed.has(legacyKey));
+      if (!legacyPanels.length) return pendingSave;
+
+      const nextCollapsedProjects = new Set(previouslyCollapsed);
+      for (const { legacyKey, key } of legacyPanels) {
+        nextCollapsedProjects.delete(legacyKey);
+        nextCollapsedProjects.add(key);
+      }
+      return updateCollapsedProjects(nextCollapsedProjects);
     },
     subscribe(listener) {
       listeners.add(listener);

@@ -115,6 +115,7 @@ export class CurrentTasksView extends ItemView {
     this.relatedPaths.clear();
     if (isKindReady(state)) {
       const { groups } = state.document;
+      void this.preferences.migrateCollapsedProjects(groups);
       for (const { notePath, tasks } of groups) {
         if (notePath) this.relatedPaths.add(notePath);
         for (const { notePath: taskPath } of tasks) {

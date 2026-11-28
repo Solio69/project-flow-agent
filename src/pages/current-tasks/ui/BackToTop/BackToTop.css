@@ -1,6 +1,6 @@
 .pfa-current-tasks .pfa-bottom-rail {
   position: sticky;
-  z-index: 3;
+  z-index: 2;
   inset-block-end: 0;
   display: flex;
   justify-content: center;
